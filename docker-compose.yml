@@ -1,36 +1,39 @@
-version: '2'
+version: '3.1'  # Nâng cấp version lên chuẩn mới hơn
+
 services:
   db:
     image: postgres:17
-    user: root
+    # ĐÃ XÓA "user: root". Hãy để nó tự chạy bằng user "postgres".
     environment:
       - POSTGRES_USER=odoo
       - POSTGRES_PASSWORD=odoo18@2024
       - POSTGRES_DB=postgres
-    restart: always             # run as a service
+    restart: always
     volumes:
-        - ./postgresql:/var/lib/postgresql/data
+      # Dùng Named Volume thay vì thư mục ./postgresql để tránh lỗi permission
+      - pgdata:/var/lib/postgresql/data
 
   odoo18:
     image: odoo:18
-    user: root
+    # ĐÃ XÓA "user: root". Hãy để nó tự chạy bằng user "odoo".
     depends_on:
       - db
     ports:
       - "10018:8069"
-      - "20018:8072" # live chat
+      - "20018:8072"
     tty: true
-    command: --
+    # Chỉ định rõ file config
+    command: --config /etc/odoo/odoo.conf
     environment:
       - HOST=db
       - USER=odoo
       - PASSWORD=odoo18@2024
       - PIP_BREAK_SYSTEM_PACKAGES=1
     volumes:
-      #- /etc/timezone:/etc/timezone:ro
-      #- /etc/localtime:/etc/localtime:ro
-      - ./entrypoint.sh:/entrypoint.sh
       - ./addons:/mnt/extra-addons
       - ./etc:/etc/odoo
-    restart: always             # run as a service
-    
+    restart: always
+
+# Định nghĩa nơi lưu dữ liệu DB do Docker quản lý
+volumes:
+  pgdata:
