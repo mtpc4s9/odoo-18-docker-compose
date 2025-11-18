@@ -19,7 +19,7 @@ services:
       - "10018:8069"
       - "20018:8072" # live chat
     tty: true
-    entrypoint: /entrypoint.sh
+    command: --
     environment:
       - HOST=db
       - USER=odoo
