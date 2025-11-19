@@ -25,8 +25,6 @@ class ZooAnimal(models.Model):
     introduction_vn = fields.Html('Introduction (VI)')
     is_purchased = fields.Boolean('Has Been Purchased', default=False)
     purchase_price = fields.Float('Purchase Price')
-    parent_id = fields.Many2one(comodel_name='zoo.animal', string='Parent', ondelete='set null')
-    male_children_ids = fields.One2many(comodel_name='zoo.animal', inverse_name='parent_id', string='Children')
     veterinarian_id = fields.Many2one(comodel_name='res.partner', string='Veterinarian')
 
     # thêm vào cuối:
@@ -38,6 +36,10 @@ class ZooAnimal(models.Model):
     mother_id = fields.Many2one(comodel_name='zoo.animal', string='Mother', ondelete='set null') # ondelete: 'set null', 'restrict', 'cascade'
     mother_name = fields.Char('Mother Name', related='mother_id.name')
     female_children_ids = fields.One2many(comodel_name='zoo.animal', inverse_name='mother_id', string='Female Children')
+    father_id = fields.Many2one(comodel_name='zoo.animal', string='Father', ondelete='set null')
+    father_name = fields.Char('Father Name', related='father_id.name')
+    male_children_ids = fields.One2many(comodel_name='zoo.animal', inverse_name='father_id', string='Male Children')
+
 
     toy_ids = fields.Many2many(comodel_name='product.product', 
                                 string="Toys", 
