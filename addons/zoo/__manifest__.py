@@ -24,4 +24,10 @@
     'depends': [
         'product',
     ],
+
+    # Data files declaration
+    'data': [
+        'security/ir.model.access.csv',
+        'views/zoo_animal_views.xml',
+    ],
 }
