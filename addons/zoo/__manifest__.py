@@ -19,4 +19,9 @@
     'installable': True,
     'auto_install': False,
     'application': True,
+
+    # Depends declaration
+    'depends': [
+        'product',
+    ],
 }
