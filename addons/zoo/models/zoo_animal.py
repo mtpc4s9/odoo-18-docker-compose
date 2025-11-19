@@ -21,10 +21,18 @@ class ZooAnimal(models.Model):
     weight = fields.Float('Weight (kg)')
     weight_pound = fields.Float('Weight (pounds)')
     introduction = fields.Text('Introduction (EN)')
+    nickname = fields.Char('Nickname')
+    introduction_vn = fields.Html('Introduction (VI)')
+    is_purchased = fields.Boolean('Has Been Purchased', default=False)
+    purchase_price = fields.Float('Purchase Price')
+    parent_id = fields.Many2one(comodel_name='zoo.animal', string='Parent', ondelete='set null')
+    male_children_ids = fields.One2many(comodel_name='zoo.animal', inverse_name='parent_id', string='Children')
+    veterinarian_id = fields.Many2one(comodel_name='res.partner', string='Veterinarian')
 
     # thêm vào cuối:
 
     age = fields.Integer('Pet Age', compute='_compute_age')
+    number_of_children = fields.Integer('Number of Children', compute='_compute_number_of_children')
 
     # thêm các trường quan hệ sau:
     mother_id = fields.Many2one(comodel_name='zoo.animal', string='Mother', ondelete='set null') # ondelete: 'set null', 'restrict', 'cascade'
@@ -54,6 +62,11 @@ class ZooAnimal(models.Model):
             else:
                 record.age = False
         pass
+
+    @api.depends('male_children_ids')
+    def _compute_number_of_children(self):
+        for record in self:
+            record.number_of_children = len(record.male_children_ids)
 
     @api.constrains('dob')
     def _check_dob(self):
