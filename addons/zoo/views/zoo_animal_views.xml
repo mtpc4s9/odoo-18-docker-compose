@@ -9,11 +9,14 @@
                     <sheet>
                         <div class="oe_title">
                             <label for="name" string="Animal" class="oe_edit_only"/>
-                            <h1><field name="name" placeholder="e.g. Peter White Tiger"/></h1>
-                            <field name="nickname"/>
+                            <h1><field name="name" placeholder="e.g. Peter White Tiger"/></h1>               
                             <label for="is_alive"/>
                             <field name="is_alive"/>
                         </div>
+
+                        <group>
+                            <field name="nickname" placeholder="Nickname"/>
+                        </group>
 
                         <group name="basic_information">
                             <group>
