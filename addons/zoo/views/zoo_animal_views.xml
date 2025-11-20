@@ -15,7 +15,12 @@
                         </div>
 
                         <group>
-                            <field name="nickname" placeholder="Nickname"/>
+                            <group>
+                                <field name="nickname" string="Nickname"/>
+                            </group>
+
+                            <group>
+                            </group>
                         </group>
 
                         <group name="basic_information">
