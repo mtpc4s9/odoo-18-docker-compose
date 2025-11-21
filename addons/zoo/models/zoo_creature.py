@@ -11,6 +11,15 @@ class ZooCreature(models.Model):
         ('water', 'Water'),
         ('ground', 'Ground'),
         ('sky', 'Sky'),
+        ('ocean', 'Ocean'),
+        ('forest', 'Forest'),
+        ('desert', 'Desert'),
+        ('mountain', 'Mountain'),
+        ('river', 'River'),
+        ('lake', 'Lake'),
+        ('pond', 'Pond'),
+        ('sea', 'Sea'),
+        ('cool', 'Cool'),
     ], string='Environment', default='ground')
     is_rare = fields.Boolean('Is Rare', default=False)
 

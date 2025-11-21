@@ -30,5 +30,6 @@
         'security/ir.model.access.csv',
         'views/zoo_animal_views.xml',
         'views/zoo_creature_views.xml',
+        'views/zoo_cage_views.xml',
     ],
 }
