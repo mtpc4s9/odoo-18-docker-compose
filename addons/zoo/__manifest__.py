@@ -23,6 +23,7 @@
     # Depends declaration
     'depends': [
         'product',
+        'mail',
     ],
 
     # Data files declaration
@@ -31,5 +32,7 @@
         'views/zoo_animal_views.xml',
         'views/zoo_creature_views.xml',
         'views/zoo_cage_views.xml',
+        'views/zoo_health_records.xml',
+        'views/zoo_diet_plans.xml',
     ],
 }

@@ -1,3 +1,6 @@
 from . import zoo_animal
 from . import zoo_creature
 from . import zoo_cage
+from . import zoo_health_record
+from . import zoo_diet_plan
+from . import zoo_diet_line

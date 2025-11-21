@@ -54,7 +54,7 @@
         <!-- Định nghĩa Menu -->
         <menuitem id="menu_zoo_configuration"
             name="Configuration"
-            sequence="50"
+            sequence="100"
             parent="menu_zoo"
             groups="base.group_user"/>
         

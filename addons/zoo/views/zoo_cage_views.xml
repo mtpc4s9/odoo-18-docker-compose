@@ -64,7 +64,7 @@
             name="Cage"
             action="action_zoo_cage"
             sequence="20"
-            parent="menu_zoo"
+            parent="menu_zoo_configuration"
             groups="base.group_user"/>
 
     </data>
