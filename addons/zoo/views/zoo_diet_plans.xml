@@ -133,10 +133,10 @@
 
         <!-- Định nghĩa Menu -->
         <menuitem id="menu_zoo_diet_plan"
-            name="Diet Plans"
+            name="Animal Diet Plans"
             action="action_zoo_diet_plan"
-            sequence="50"
-            parent="menu_zoo"
+            sequence="20"
+            parent="menu_zoo_animal_nutrition"
             groups="base.group_user"/>
 
     </data>

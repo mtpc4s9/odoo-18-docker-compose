@@ -33,6 +33,11 @@
         'views/zoo_creature_views.xml',
         'views/zoo_cage_views.xml',
         'views/zoo_health_records.xml',
+        'views/zoo_animal_meal_views.xml',
         'views/zoo_diet_plans.xml',
+        'wizard/toy_add_views.xml',
+        'wizard/cage_update_views.xml',
+        'wizard/animal_feeding_views.xml',
+        'views/zoo_husbandry_task_views.xml'
     ],
 }

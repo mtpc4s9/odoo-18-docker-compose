@@ -82,7 +82,7 @@ class ZooHealthRecord(models.Model):
     )
 
     related_cage_id = fields.Many2one(comodel_name='zoo.cage',
-        string='Related Cage ID',
+        string='Related Cage',
         required=False)
    
     # --- Các hàm tính toán ---
