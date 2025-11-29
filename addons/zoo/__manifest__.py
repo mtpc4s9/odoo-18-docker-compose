@@ -9,21 +9,12 @@
     'website': 'https://minhng.info',
     'category': 'Uncategorized', # https://github.com/odoo/odoo/blob/18.0/odoo/addons/base/data/ir_module_category_data.xml
     'version': '0.1',
-    'depends': [
-        'product',
-    ],
-    'data': [],
-    'demo': [],
-    'css': [],
-    # 'qweb': ['static/src/xml/*.xml'],
-    'installable': True,
-    'auto_install': False,
-    'application': True,
-
-    # Depends declaration
+    
+    # Dependencies
     'depends': [
         'product',
         'mail',
+        'hr',
     ],
 
     # Data files declaration
@@ -38,6 +29,13 @@
         'wizard/toy_add_views.xml',
         'wizard/cage_update_views.xml',
         'wizard/animal_feeding_views.xml',
-        'views/zoo_husbandry_task_views.xml'
+        'views/zoo_husbandry_task_views.xml',
+        'views/zoo_keeper_views.xml',
+        'views/zoo_keeper_certificate_views.xml',
+        'views/zoo_keeper_speciality_views.xml',
     ],
+
+    'installable': True,
+    'auto_install': False,
+    'application': True,
 }
