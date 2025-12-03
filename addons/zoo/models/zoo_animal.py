@@ -1,21 +1,24 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models, tools, _
-from odoo.exceptions import UserError, ValidationError
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 import datetime
+
 
 class ZooAnimal(models.Model):
     _name = "zoo.animal"
     _description = "Animal in the zoo"
 
-    name = fields.Char('Animal Name',
+    name = fields.Char(
+        string='Animal Name',
         required=True)    
-    
-    description = fields.Text('Description')
-    
-    dob = fields.Date('DOB',
+
+    description = fields.Text(string='Description')
+
+    dob = fields.Date(
+        string='DOB',
         required=False)
-    
+
     gender = fields.Selection([
         ('male', 'Male'),
         ('female', 'Female')
@@ -23,8 +26,9 @@ class ZooAnimal(models.Model):
         string='Gender',
         default='male',
         required=True)
-    
-    feed_time = fields.Datetime('Feed Time',
+
+    feed_time = fields.Datetime(
+        string='Feed Time',
         copy=False)
     
     is_alive = fields.Boolean('Is Alive',

@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models, tools, _
-from odoo.exceptions import UserError, ValidationError
+from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 from odoo.tools import html2plaintext
 
-import datetime
 
 class ZooHealthRecord(models.Model):
     _name = "zoo.health.record"

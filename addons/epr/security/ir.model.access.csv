@@ -1,0 +1,12 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_epr_purchase_request_user,ePR Request User,model_epr_purchase_request,group_epr_user,1,1,1,0
+access_epr_purchase_request_line_user,ePR Line User,model_epr_purchase_request_line,group_epr_user,1,1,1,0
+access_epr_reject_wizard_user,ePR Reject Wizard User,model_epr_reject_wizard,group_epr_user,1,0,0,0
+access_epr_purchase_request_manager,ePR Request Manager,model_epr_purchase_request,group_epr_manager,1,1,1,0
+access_epr_purchase_request_line_manager,ePR Line Manager,model_epr_purchase_request_line,group_epr_manager,1,1,1,0
+access_epr_reject_wizard_manager,ePR Reject Wizard Manager,model_epr_reject_wizard,group_epr_manager,1,1,1,1
+access_epr_purchase_request_officer,ePR Request Officer,model_epr_purchase_request,group_epr_purchasing_officer,1,1,1,0
+access_epr_purchase_request_line_officer,ePR Line Officer,model_epr_purchase_request_line,group_epr_purchasing_officer,1,1,1,0
+access_epr_purchase_request_admin,ePR Request Admin,model_epr_purchase_request,group_epr_admin,1,1,1,1
+access_epr_purchase_request_line_admin,ePR Line Admin,model_epr_purchase_request_line,group_epr_admin,1,1,1,1
+access_epr_reject_wizard_admin,ePR Reject Wizard Admin,model_epr_reject_wizard,group_epr_admin,1,1,1,1

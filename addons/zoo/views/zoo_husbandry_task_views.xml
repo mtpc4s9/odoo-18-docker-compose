@@ -41,16 +41,34 @@
                         <button name="action_start" string="Start Working" type="object" class="btn-primary"
                                 invisible="state != 'draft'"/>
                         
-                        <button name="action_done" string="Mark as Done" type="object" class="btn-success"
+                        <!-- <button name="action_done" string="Mark as Done" type="object" class="btn-success"
+                                invisible="state != 'in_progress'"/> -->
+
+                        <!-- Button Get Approval for Zoo Keepers -->
+                        <button name="action_request_approval" string="Get Approval" 
+                                type="object" class="btn-primary"
                                 invisible="state != 'in_progress'"/>
 
+                        <!-- Button Approve for Zoo Manager -->
+                        <button name="action_approve" string="Approve" 
+                                type="object" class="btn-success"
+                                invisible="state != 'to_approve'"
+                                groups="zoo.group_zoo_manager"/>
+
+                        <!-- Button Refuse for Zoo Manager -->
+                        <button name="action_reject" string="Reject" 
+                                type="object" class="btn-danger"
+                                invisible="state != 'to_approve'"
+                                groups="zoo.group_zoo_manager"/>
+                        
+                        <!-- Button Cancel for Zoo Keepers -->
                         <button name="action_cancel" string="Cancel" type="object" 
                                 invisible="state in ('done', 'cancel')"/>
                                 
                         <button name="action_draft" string="Reset to Draft" type="object" 
                                 invisible="state != 'cancel'"/>
 
-                        <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,done"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,to_approve,done"/>
                     </header>
                     <sheet>
                         <widget name="web_ribbon" title="Done" bg_color="bg-success" invisible="state != 'done'"/>
@@ -204,6 +222,14 @@
         
         </record>
 
+        <record id="action_zoo_task_to_approve" model="ir.actions.act_window">
+            <field name="name">Tasks to Approve</field>
+            <field name="res_model">zoo.husbandry.task</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('state', '=', 'to_approve'), ('approver_id', '=', uid)]</field>
+            <field name="context">{'create': False}</field> 
+        </record>
+
         <!-- Định nghĩa Menu -->
         <menuitem id="menu_zoo_husbandry_and_care"
             name="Husbandry and Care"
@@ -211,6 +237,15 @@
             parent="menu_zoo"
             groups="base.group_user"/>
         
+        <!-- Định nghĩa Menu cho Zoo Manager -->
+        <menuitem id="menu_zoo_task_approval"
+            name="Approval Task"
+            parent="menu_zoo_husbandry_and_care"
+            action="action_zoo_task_to_approve"
+            sequence="5"
+            groups="zoo.group_zoo_manager"/>
+
+        <!-- Định nghĩa Menu cho Zoo Keepers -->
         <menuitem id="menu_zoo_daily_tasks"
             name="Keeper Daily Tasks"
             sequence="10"

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- 
+            ===================================================================
+            TOP LEVEL MENU
+            Menu cấp cao nhất, hiển thị trên thanh ứng dụng chính (App Switcher)
+            ===================================================================
+        -->
+        <menuitem
+            id="menu_epr_root"
+            name="eProcurement"
+            sequence="10"
+            web_icon="epr,static/description/icon.png"
+            groups="epr.group_epr_user"/> 
+            <!-- Chỉ hiện cho nhóm User (và Manager vì Manager kế thừa User) -->
+
+        <!-- 
+            ===================================================================
+            CATEGORY MENU
+            Menu cấp 2, dùng để gom nhóm các chức năng (Requests, Configuration...)
+            ===================================================================
+        -->
+        <menuitem
+            id="menu_epr_purchase_request_category"
+            name="Purchase Requests"
+            parent="menu_epr_root"
+            sequence="10"/>
+
+        <!-- 
+            ===================================================================
+            ACTION MENUS
+            Menu cấp 3, bấm vào sẽ mở ra view (Action)
+            ===================================================================
+        -->
+        
+        <!-- Menu: My Requests (Action đã định nghĩa ở file view) -->
+        <menuitem
+            id="menu_epr_purchase_request_act"
+            name="My Requests"
+            parent="menu_epr_purchase_request_category"
+            action="action_epr_purchase_request"
+            sequence="10"/>
+
+        <!-- Gợi ý: Menu To Approve (Dành cho Manager) -->
+        <!-- Bạn có thể thêm action riêng cho Manager ở đây sau này -->
+        
+        <menuitem
+            id="menu_epr_request_to_approve"
+            name="To Approve"
+            parent="menu_epr_purchase_request_category"
+            action="action_epr_purchase_request_to_approve"
+            sequence="20"
+            groups="group_epr_manager"/>
+       
+        
+        <!-- 
+            ===================================================================
+            CONFIGURATION MENU
+            Thường đặt sequence cao để nằm cuối
+            ===================================================================
+        -->
+        <menuitem
+            id="menu_epr_config"
+            name="Configuration"
+            parent="menu_epr_root"
+            sequence="100"
+            groups="epr.group_epr_manager"/>
+
+    </data>
+</odoo>

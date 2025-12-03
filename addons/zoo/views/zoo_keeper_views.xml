@@ -11,6 +11,15 @@
                 <xpath expr="//field[@name='category_ids']" position="after">
                     <field name="is_zoo_keeper" widget="boolean_toggle"/>
                 </xpath>
+                
+                <!-- Add Manager field for Zoo Keepers -->
+                <xpath expr="//field[@name='parent_id']" position="attributes">
+                    <attribute name="invisible">0</attribute>
+                    <attribute name="domain">[('is_zoo_keeper', '=', True)]</attribute>
+                </xpath>
+                <xpath expr="//field[@name='parent_id']" position="after">
+                    <field name="coach_id" invisible="1"/>
+                </xpath>
 
                 <xpath expr="//notebook" position="inside">
                     <page string="Zoo Qualifications" invisible="not is_zoo_keeper">
