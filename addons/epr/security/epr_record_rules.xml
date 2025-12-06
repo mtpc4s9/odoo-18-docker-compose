@@ -23,10 +23,11 @@
         <record id="rule_epr_manager_approver" model="ir.rule">
             <field name="name">ePR: Manager sees department requests</field>
             <field name="model_id" ref="model_epr_purchase_request"/>
-            <field name="domain_force">['|', '|', 
+            <field name="domain_force">['|', '|', '|',
                 ('employee_id.user_id','=',user.id), 
                 ('approver_ids', 'in', user.id),
-                ('department_id.manager_id.user_id', '=', user.id)
+                ('department_id.manager_id.user_id', '=', user.id),
+                ('employee_id.parent_id.user_id', '=', user.id)
             ]</field>
             <field name="groups" eval="[(4, ref('epr.group_epr_manager'))]"/>
         </record>

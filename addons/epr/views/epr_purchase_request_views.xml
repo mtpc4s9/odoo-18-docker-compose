@@ -38,6 +38,101 @@
 
         <!-- 
             ===================================================================
+            2. KANBAN VIEW
+            Hiển thị dạng thẻ theo quy trình (Pipeline)
+            ===================================================================
+        -->
+        <record id="view_epr_purchase_request_kanban" model="ir.ui.view">
+            <field name="name">epr.purchase.request.kanban</field>
+            <field name="model">epr.purchase.request</field>
+            <field name="arch" type="xml">
+                <!-- 
+                    default_group_by="state": Kích hoạt chế độ cột theo trạng thái.
+                    records_draggable="false": Chặn kéo thả nếu bạn muốn quy trình chặt chẽ (chỉ đổi trạng thái bằng nút bấm).
+                    Nếu muốn cho phép kéo thả để duyệt nhanh, hãy bỏ attribute này.
+                -->
+                <kanban default_group_by="state" 
+                        class="o_kanban_small_column" 
+                        quick_create="false" 
+                        sample="1">
+                    
+                    <!-- Các field cần dùng trong logic hiển thị -->
+                    <field name="state"/>
+                    <field name="currency_id"/>
+                    <field name="activity_state"/>
+                    <field name="id"/>
+                    <field name="employee_id"/>
+                    <field name="department_id"/>
+                    <field name="date_required"/>
+                    <field name="priority"/>
+                    <field name="estimated_total"/>
+                    <field name="activity_ids"/>
+
+                    <!-- Thanh tiến độ (Progress Bar) trên đầu mỗi cột -->
+                    <progressbar field="state" 
+                                 colors='{"draft": "secondary", "to_approve": "warning", "approved": "success", "rejected": "danger"}'/>
+
+                    <templates>
+                        <t t-name="kanban-box">
+                            <!-- Khung thẻ: oe_kanban_global_click giúp click vào đâu cũng mở form -->
+                            <div class="oe_kanban_global_click oe_kanban_card d-flex flex-column">
+                                
+                                <!-- HEADER: Tên + Menu 3 chấm -->
+                                <div class="o_kanban_record_top mb-2">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title">
+                                            <field name="name"/>
+                                        </strong>
+                                        <span class="float-end badge" 
+                                              t-attf-class="badge-{{record.state.raw_value == 'approved' ? 'success' : (record.state.raw_value == 'rejected' ? 'danger' : 'info')}}">
+                                            <field name="state"/>
+                                        </span>
+                                    </div>
+                                    <!-- Dropdown Menu (Odoo 18 dùng Bootstrap 5) -->
+                                    <div class="o_dropdown_kanban dropdown">
+                                        <a class="dropdown-toggle o-no-caret btn" role="button" data-bs-toggle="dropdown" href="#" aria-label="Dropdown menu" title="Dropdown menu">
+                                            <span class="fa fa-ellipsis-v"/>
+                                        </a>
+                                        <div class="dropdown-menu" role="menu">
+                                            <a role="menuitem" type="edit" class="dropdown-item">Edit</a>
+                                            <a role="menuitem" type="delete" class="dropdown-item">Delete</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- BODY: Thông tin chính -->
+                                <div class="o_kanban_record_body tags-section mb-2">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <field name="employee_id" widget="many2one_avatar_user"/>
+                                        <span class="ms-2 text-muted small">
+                                            <field name="department_id"/>
+                                        </span>
+                                    </div>
+                                    <!-- Hiển thị ngày cần hàng nếu có -->
+                                    <div t-if="record.date_required.raw_value" class="text-muted small">
+                                        <i class="fa fa-clock-o me-1"/> <field name="date_required"/>
+                                    </div>
+                                </div>
+
+                                <!-- FOOTER: Priority + Activity + Total -->
+                                <div class="o_kanban_record_bottom mt-auto d-flex justify-content-between align-items-center">
+                                    <div class="oe_kanban_bottom_left d-flex align-items-center">
+                                        <field name="priority" widget="priority"/>
+                                        <field name="activity_ids" widget="kanban_activity" class="ms-2"/>
+                                    </div>
+                                    <div class="oe_kanban_bottom_right">
+                                        <field name="estimated_total" widget="monetary" options="{'currency_field': 'currency_id'}" class="fw-bold"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- 
+            ===================================================================
             2. LIST VIEW
             Danh sách tổng quan
             ===================================================================
@@ -102,12 +197,14 @@
                                 invisible="state != 'to_approve'"
                                 groups="epr.group_epr_manager"/>
                         
-                        <!-- Nút Reset: Cho User sửa lại khi đã submit nhầm -->
+                        <field name="is_owner" invisible="1"/>
+
+                        <!-- Nút Reset: Cho phép PR's owner sửa lại khi đã submit nhầm -->
                         <button name="action_reset_to_draft" 
                                 string="Reset to Draft" 
                                 type="object" 
                                 class="btn-warning"
-                                invisible="state not in ['to_approve']"/>
+                                invisible="state not in ['to_approve', 'rejected'] or not is_owner"/>
                         
                         <field name="state" widget="statusbar" statusbar_visible="draft,to_approve,approved,done"/>
                     </header>
@@ -133,11 +230,6 @@
                             <group>
                                 <field name="date_required"/>
                                 <field name="priority" widget="priority"/>
-                                <!-- Lý do từ chối chỉ hiện khi bị từ chối -->
-                                <field name="rejection_reason" 
-                                       invisible="state != 'rejected'" 
-                                       readonly="1"
-                                       class="text-danger"/>
                             </group>
                         </group>
 
@@ -158,7 +250,30 @@
                                         <field name="subtotal_estimated" sum="Total"/>
                                         <field name="currency_id" invisible="1"/>
                                         
-                                        <field name="vendor_name" optional="hide"/>
+                                        <!-- ================= VENDOR SECTION ================= -->
+                                        <!-- 1. VENDOR LIST (User Search) -->
+                                        <!-- options="{'no_create': True}": Ngăn User tạo rác dữ liệu -->
+                                        <field name="user_vendor_id" 
+                                               placeholder="Select existing vendor..."
+                                               options="{'no_create': True, 'no_create_edit': True}"
+                                               widget="many2one"/>
+
+                                        <!-- 2. VENDOR TEXT (User Type)
+                                            "user_vendor_id": Tự động điền vào trường text nếu đã chọn được vendor trong danh bạ
+                                            "required="not user_vendor_id": Bắt buộc nhập nếu chưa chọn ID.
+                                        -->
+                                        <field name="suggested_vendor_name" 
+                                               placeholder="...or type new vendor name"
+                                               required="not user_vendor_id"/>
+                                        <!-- 3. FINAL VENDOR (Purchasing Only)
+                                            "groups="...": Chỉ hiện cột này cho Purchasing Officer.
+                                            User thường sẽ hoàn toàn không thấy cột này.
+                                            "optional="show": Cho phép ẩn/hiện trong menu 3 chấm nếu cần.
+                                        -->
+                                        <field name="final_vendor_id" 
+                                               groups="epr.group_epr_purchasing_officer"
+                                               widget="many2one"
+                                               optional="show"/>
                                         
                                         <!-- Product ID ẩn, dành cho Purchasing map sau này -->
                                         <field name="product_id" optional="hide" groups="epr.group_epr_purchasing_officer"/>
@@ -177,6 +292,16 @@
                                         <field name="date_approved" readonly="1"/>
                                         <field name="approved_by_id" readonly="1"/>
                                         <field name="approver_ids" widget="many2many_tags" readonly="1"/>
+                                    </group>
+                                </group>
+
+                                <group>
+                                    <group string="Rejection" invisible="not date_rejected">
+                                        <field name="date_rejected" readonly="1"/>
+                                        <field name="rejected_by_id" readonly="1"/>
+                                        <field name="rejection_reason"
+                                               readonly="1"
+                                               class="text-danger"/>
                                     </group>
                                 </group>
                             </page>
@@ -199,7 +324,7 @@
             <field name="name">Purchase Requests</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">epr.purchase.request</field>
-            <field name="view_mode">list,form,search</field>
+            <field name="view_mode">kanban,list,form,search</field>
             <field name="search_view_id" ref="view_epr_purchase_request_search"/>
             <field name="context">{'search_default_my_requests': 1}</field>
             <!-- <field name="context">{'search_default_my_requests': 1, 'search_default_to_approve_by_me': 1}</field> -->
@@ -215,7 +340,7 @@
             <field name="name">To Approve</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">epr.purchase.request</field>
-            <field name="view_mode">list,form,search</field>
+            <field name="view_mode">kanban,list,form,search</field>
             <field name="search_view_id" ref="view_epr_purchase_request_search"/>
             <field name="context">{'search_default_to_approve_by_me': 1, 'search_default_to_approve': 1}</field>
             <field name="domain">[('state', '=', 'to_approve')]</field>

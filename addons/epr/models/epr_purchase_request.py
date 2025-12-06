@@ -38,6 +38,12 @@ class EprPurchaseRequest(models.Model):
         readonly=True
     )
 
+    # Xác định người tạo PR
+    is_owner = fields.Boolean(
+        compute='_compute_is_owner',
+        store=False
+    )
+    
     date_required = fields.Date(
         string='Date Required',
         required=True,
@@ -64,7 +70,8 @@ class EprPurchaseRequest(models.Model):
         default='draft',
         tracking=True,
         index=True,
-        copy=False
+        copy=False,
+        group_expand='_expand_groups'
     )
 
     # approver_ids = fields.Many2many(
@@ -122,6 +129,21 @@ class EprPurchaseRequest(models.Model):
         help="Người đã phê duyệt."
     )
 
+    date_rejected = fields.Datetime(
+        string='Rejected Date',
+        readonly=True,
+        copy=False,
+        help="Ngày bị từ chối."
+    )
+
+    rejected_by_id = fields.Many2one(
+        comodel_name='res.users',
+        string='Rejected By',
+        readonly=True,
+        copy=False,
+        help="Người đã từ chối."
+    )
+
     date_submitted = fields.Datetime(
         string='Submitted Date',
         readonly=True,
@@ -131,13 +153,19 @@ class EprPurchaseRequest(models.Model):
     # ==========================================================================
     # MODEL METHODS
     # ==========================================================================
-
+    # Hàm tạo sequence cho Request Reference
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('name', _('New')) == _('New'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('epr.purchase.request') or _('New')
         return super().create(vals_list)
+
+    # --- Kanban Grouping (Để Kanban hiển thị đủ cột Draft/Done dù không có data) ---
+    @api.model
+    def _expand_groups(self, states, domain, order=None):
+        """Force display all state columns in Kanban, even if empty"""
+        return ['draft', 'to_approve', 'approved', 'rejected', 'in_progress', 'done', 'cancel']
 
     # Compute estimated total
     @api.depends('line_ids.subtotal_estimated', 'currency_id')
@@ -148,6 +176,12 @@ class EprPurchaseRequest(models.Model):
             # Ở đây giả định line dùng chung currency với header
             total = sum(line.subtotal_estimated for line in request.line_ids)
             request.estimated_total = total
+
+    # Xác định người tạo PR
+    @api.depends_context('uid')
+    def _compute_is_owner(self):
+        for record in self:
+            record.is_owner = record.employee_id.user_id.id == self.env.uid
 
     # Compute approvers
     # @api.depends('employee_id', 'department_id', 'estimated_total')
@@ -254,19 +288,6 @@ class EprPurchaseRequest(models.Model):
             'approved_by_id': self.env.user.id
         })
 
-        # Mark activities as done
-        # NOTE: Commented out for testing without mail server
-        # self.activity_ids.filtered(
-        #     lambda a: a.user_id == self.env.user
-        # ).action_feedback(feedback='Approved')
-
-        # Post message to chatter
-        # self.message_post(
-        #     body=_('Purchase Request approved by %s') % (
-        #         self.env.user.name
-        #     )
-        # )
-
     # Hàm mở Wizard
     def action_reject_wizard(self):
         """Open rejection wizard"""
@@ -298,24 +319,13 @@ class EprPurchaseRequest(models.Model):
 
         # Thực hiện ghi dữ liệu
         self.write({
-            'state': 'draft',
+            'state': 'rejected',
             'rejection_reason': reason,
-            'approver_ids': [(5, 0, 0)]  # QUAN TRỌNG: Xóa sạch người duyệt để clear danh sách chờ
+            'approver_ids': [(5, 0, 0)],  # QUAN TRỌNG: Xóa sạch người duyệt để clear danh sách chờ
+            # LOG: Ghi nhận thông tin từ chối
+            'date_rejected': fields.Datetime.now(),
+            'rejected_by_id': self.env.user.id,
         })
-
-        # Mark activities as done
-        # NOTE: Commented out for testing without mail server
-        # self.activity_ids.filtered(
-        #     lambda a: a.user_id == self.env.user
-        # ).action_feedback(feedback='Rejected')
-
-        # Post message to chatter
-        # self.message_post(
-        #     body=_('Purchase Request rejected by %s\nReason: %s') % (
-        #         self.env.user.name,
-        #         reason
-        #     )
-        # )
 
     # User action: Reset to draft when accidentally submitted
     def action_reset_to_draft(self):
@@ -435,16 +445,38 @@ class EprPurchaseRequestLine(models.Model):
         help="Mô tả chi tiết, có thể dán link, hình ảnh minh họa, thông số kỹ thuật..."
     )
 
-    # Dùng Char hoặc Text cho tên nhà cung cấp gợi ý (Staff không cần chọn trong danh bạ đối tác)
-    vendor_name = fields.Char(
-        string='Vendor Name',
+    # === 1. USER INPUT FIELDS ===
+    # User chọn từ danh bạ (Không cho tạo mới ở View)
+    user_vendor_id = fields.Many2one(
+        comodel_name='res.partner',
+        string='Approved Vendor',
+        domain=lambda self: [
+            ('supplier_rank', '>', 0),
+            '|', ('company_id', '=', False),
+            ('company_id', '=', self.env.company.id)
+        ],
+        help="Chọn nhà cung cấp có sẵn trong hệ thống."
+    )
+
+    # User nhập text tự do (Dùng khi không tìm thấy hoặc đề xuất mới)
+    suggested_vendor_name = fields.Char(
+        string='Suggested Vendor Name',
         help="Tên nhà cung cấp được đề xuất bởi người yêu cầu (tham khảo)."
+    )
+
+    # === 2. PURCHASING ONLY FIELDS ===
+    # Purchasing chốt Vendor cuối cùng để làm RFQ
+    final_vendor_id = fields.Many2one(
+        comodel_name='res.partner',
+        string='Final Vendor',
+        domain="[('supplier_rank', '>', 0)]",
+        help="Nhà cung cấp chính thức được bộ phận Mua hàng chốt."
     )
 
     quantity = fields.Float(
         string='Quantity',
         default=1.0,
-        digits='Product Unit of Measure', # Sử dụng độ chính xác cấu hình trong hệ thống
+        digits='Product Unit of Measure',  # Sử dụng độ chính xác cấu hình trong hệ thống
         required=True,
         help="Số lượng cần mua."
     )
@@ -475,26 +507,30 @@ class EprPurchaseRequestLine(models.Model):
             price = line.estimated_price or 0.0
             line.subtotal_estimated = qty * price
 
-    # === logic Onchange ===
-    # Chỉ chạy khi Purchasing Staff chọn product_id (lúc xử lý phiếu)
+    # ==========================================================================
+    # ONCHANGE FIELDS
+    # ==========================================================================
+    @api.onchange('user_vendor_id')
+    def _onchange_user_vendor_id(self):
+        """
+        UX Logic:
+        1. Nếu User chọn Vendor ID -> Tự động điền text & set Final Vendor.
+        2. Nếu User bỏ chọn Vendor ID -> Xóa Final Vendor để Purchasing xử lý lại.
+        """
+        if self.user_vendor_id:
+            # User đã chọn vendor từ danh bạ
+            self.suggested_vendor_name = self.user_vendor_id.name
+            self.final_vendor_id = self.user_vendor_id
+        else:
+            # User bỏ chọn vendor
+            self.final_vendor_id = False
+            # suggested_vendor_name giữ nguyên để User có thể nhập thủ công
 
-    @api.onchange('product_id')
-    def _onchange_product_id(self):
-        if not self.product_id:
-            return
-
-        # Đơn vị tính (UoM): NÊN ghi đè theo chuẩn hệ thống
-        # Lý do: Staff có thể nhập "Cái", nhưng hệ thống kho quản lý là "Unit(s)".
-        # Để tạo PO chính xác sau này, ta cần lấy UoM chuẩn của sản phẩm.
-        self.uom_name = self.product_id.uom_po_id.name or self.product_id.uom_id.name
-
-        # Giá dự kiến: Chỉ điền nếu Staff để bằng 0
-        if self.estimated_price == 0.0:
-            self.estimated_price = self.product_id.standard_price
-
-        # Tên sản phẩm: KHÔNG ghi đè (Giữ nguyên mô tả của Staff)
-        # Vì Staff mô tả nhu cầu thực tế (VD: "Máy tính Dell cho kế toán"), 
-        # còn tên Product hệ thống có thể chung chung (VD: "Laptop Dell Latitude").
-        # Ta chỉ điền nếu dòng này do Purchasing tạo mới hoàn toàn (name đang rỗng).
-        if not self.name:
-            self.name = self.product_id.display_name
+    @api.constrains('user_vendor_id', 'suggested_vendor_name')
+    def _check_vendor_presence(self):
+        """
+        Data Integrity: Bắt buộc phải có ít nhất 1 thông tin về nhà cung cấp.
+        """
+        for line in self:
+            if not line.user_vendor_id and not line.suggested_vendor_name:
+                raise ValidationError(_("Dòng sản phẩm '%s': Vui lòng chọn Nhà cung cấp hoặc nhập tên đề xuất.", line.name))
