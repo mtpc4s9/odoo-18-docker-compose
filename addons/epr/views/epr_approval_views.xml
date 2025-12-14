@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================ -->
+        <!-- 1. APPROVAL CONFIGURATION -->
+        <!-- ============================================================ -->
+
+        <!-- List View -->
+        <record id="view_epr_approval_config_list" model="ir.ui.view">
+            <field name="name">epr.approval.config.list</field>
+            <field name="model">epr.approval.config</field>
+            <field name="arch" type="xml">
+                <list string="Approval Rules" multi_edit="1" editable="bottom">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="min_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    <field name="currency_id" column_invisible="True"/>
+                    <field name="approval_type"/>
+                    <field name="user_ids" widget="many2many_avatar_user"/>
+                    <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Form View -->
+        <record id="view_epr_approval_config_form" model="ir.ui.view">
+            <field name="name">epr.approval.config.form</field>
+            <field name="model">epr.approval.config</field>
+            <field name="arch" type="xml">
+                <form string="Approval Rule">
+                    <sheet>
+                        <div class="oe_title">
+                            <label for="name" class="oe_edit_only"/>
+                            <h1><field name="name" placeholder="e.g. Manager Approval (> 50M)"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="min_amount" widget="monetary"/>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="approval_type" widget="radio"/>
+                            </group>
+                            <group>
+                                <field name="user_ids" widget="many2many_tags_avatar"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="active" invisible="1"/>
+                                <field name="sequence" invisible="1"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Search View -->
+        <record id="view_epr_approval_config_search" model="ir.ui.view">
+            <field name="name">epr.approval.config.search</field>
+            <field name="model">epr.approval.config</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="name"/>
+                    <field name="user_ids"/>
+                    <filter string="Archived" name="archived" domain="[('active', '=', False)]"/>
+                </search>
+            </field>
+        </record>
+
+        <!-- Action -->
+        <record id="action_epr_approval_config" model="ir.actions.act_window">
+            <field name="name">Approval Rules</field>
+            <field name="res_model">epr.approval.config</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Define your Purchase Request approval rules here.
+                </p>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 2. APPROVAL ENTRY (Nhật ký duyệt - Nhúng trong RFQ) -->
+        <!-- ============================================================ -->
+
+        <!-- List View (Dùng để hiện trong Tab 'Approvals' của RFQ) -->
+        <record id="view_epr_approval_entry_list" model="ir.ui.view">
+            <field name="name">epr.approval.entry.list</field>
+            <field name="model">epr.approval.entry</field>
+            <field name="arch" type="xml">
+                <!-- 
+                    decoration-muted: Làm mờ nếu chưa đến lượt (new)
+                    decoration-danger: Màu đỏ nếu bị từ chối
+                    decoration-success: Màu xanh nếu đã duyệt
+                -->
+                <list string="Approvals" 
+                      create="0" 
+                      delete="0" 
+                      edit="0"
+                      decoration-muted="status == 'new'"
+                      decoration-danger="status == 'rejected'"
+                      decoration-success="status == 'approved'">
+                    
+                    <field name="sequence"/>
+                    <field name="name" string="Step"/>
+                    <field name="required_user_ids" widget="many2many_avatar_user"/>
+                    <field name="approval_type"/>
+                    
+                    <!-- Status Badge -->
+                    <field name="status" 
+                           widget="badge"
+                           decoration-info="status == 'pending'"
+                           decoration-success="status == 'approved'"
+                           decoration-danger="status == 'rejected'"/>
+                    
+                    <field name="actual_user_ids" widget="many2many_tags_avatar" optional="show"/>
+                    <field name="approval_date" optional="show"/>
+                    <field name="can_approve" column_invisible="True"/>
+
+                    <!-- Inline Actions Buttons -->
+                    <button name="action_approve_line" 
+                            string="Approve" 
+                            type="object" 
+                            icon="fa-check text-success" 
+                            invisible="not can_approve"
+                            title="Approve this step"/>
+                            
+                    <button name="action_refuse_line" 
+                            string="Refuse" 
+                            type="object" 
+                            icon="fa-times text-danger" 
+                            invisible="not can_approve"
+                            title="Refuse this step"/>
+                </list>
+            </field>
+        </record>
+
+    </data>
+</odoo>

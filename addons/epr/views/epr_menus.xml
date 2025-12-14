@@ -27,6 +27,18 @@
             parent="menu_epr_root"
             sequence="10"/>
 
+        <menuitem
+            id="menu_epr_rfq_category"
+            name="RFQs"
+            parent="menu_epr_root"
+            sequence="20"/>
+
+        <menuitem
+            id="menu_epr_po_category"
+            name="POs"
+            parent="menu_epr_root"
+            sequence="30"/>
+
         <!-- 
             ===================================================================
             ACTION MENUS
@@ -42,9 +54,7 @@
             action="action_epr_purchase_request"
             sequence="10"/>
 
-        <!-- Gợi ý: Menu To Approve (Dành cho Manager) -->
-        <!-- Bạn có thể thêm action riêng cho Manager ở đây sau này -->
-        
+        <!-- Menu To Approve (Dành cho Manager) -->        
         <menuitem
             id="menu_epr_request_to_approve"
             name="To Approve"
@@ -53,19 +63,80 @@
             sequence="20"
             groups="group_epr_manager"/>
        
+        <!-- Menu: My RFQs (Action đã định nghĩa ở file view) -->
+        <menuitem
+            id="menu_epr_rfq_act"
+            name="My RFQs"
+            parent="menu_epr_rfq_category"
+            action="action_epr_rfq"
+            sequence="10"/>
+
+        <!-- Menu: My POs -->
+        <menuitem
+            id="menu_epr_po_act"
+            name="My POs"
+            parent="menu_epr_po_category"
+            action="action_epr_po"
+            sequence="10"
+            groups="epr.group_epr_admin,epr.group_epr_purchasing_officer"/>
         
         <!-- 
             ===================================================================
             CONFIGURATION MENU
-            Thường đặt sequence cao để nằm cuối
             ===================================================================
         -->
-        <menuitem
-            id="menu_epr_config"
-            name="Configuration"
-            parent="menu_epr_root"
-            sequence="100"
-            groups="epr.group_epr_manager"/>
+        <menuitem id="menu_epr_config"
+                  name="Configuration"
+                  parent="menu_epr_root"
+                  sequence="100"
+                  groups="epr.group_epr_admin,epr.group_epr_purchasing_officer"/>
 
+        <!-- 
+            1. PRODUCTS MENU
+            Action: purchase.product_normal_action_puchased
+            Lý do: Chỉ hiện sản phẩm có 'Purchase OK' = True.
+            Dependency: Cần module 'purchase' trong manifest.
+        -->
+        <menuitem id="menu_epr_config_products"
+                  name="Products"
+                  parent="menu_epr_config"
+                  action="purchase.product_normal_action_puchased"
+                  sequence="10"
+                  groups="epr.group_epr_admin,epr.group_epr_purchasing_officer"/>
+
+        <!-- 
+            2. VENDORS MENU
+            Action: account.res_partner_action_supplier
+            Lý do: Đây là action chuẩn của Odoo 18 cho Vendors (hiển thị cột nợ phải trả, bills...)
+            Dependency: Cần module 'account' trong manifest.
+        -->
+        <menuitem id="menu_epr_config_vendors"
+                  name="Vendors"
+                  parent="menu_epr_config"
+                  action="account.res_partner_action_supplier"
+                  sequence="20"
+                  groups="epr.group_epr_admin,epr.group_epr_purchasing_officer"/>
+
+        <!-- 
+            3. PRODUCT CATEGORIES
+            Để phân loại sản phẩm tốt hơn
+        -->
+        <menuitem id="menu_epr_config_product_categ"
+                  name="Product Categories"
+                  parent="menu_epr_config"
+                  action="product.product_category_action_form"
+                  sequence="30"
+                  groups="epr.group_epr_admin,epr.group_epr_purchasing_officer"/>
+
+        <!-- 
+            4. APPROVAL RULES
+        -->
+        <menuitem id="menu_epr_config_approval_rules"
+                  name="Approval Rules"
+                  parent="menu_epr_config"
+                  action="action_epr_approval_config"
+                  sequence="40"
+                  groups="epr.group_epr_admin,epr.group_epr_purchasing_officer"/>
+        
     </data>
 </odoo>

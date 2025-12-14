@@ -43,7 +43,7 @@ class EprPurchaseRequest(models.Model):
         compute='_compute_is_owner',
         store=False
     )
-    
+
     date_required = fields.Date(
         string='Date Required',
         required=True,
@@ -74,13 +74,6 @@ class EprPurchaseRequest(models.Model):
         group_expand='_expand_groups'
     )
 
-    # approver_ids = fields.Many2many(
-    #     'res.users',
-    #     string='Approvers',
-    #     compute='_compute_approvers',
-    #     store=True
-    # )
-
     # Approvers: Nên là field thường (không compute) để lưu cố định người duyệt lúc Submit
     approver_ids = fields.Many2many(
         comodel_name='res.users',
@@ -93,22 +86,41 @@ class EprPurchaseRequest(models.Model):
         readonly=True,
         tracking=True
     )
+
     currency_id = fields.Many2one(
         'res.currency',
         string='Currency',
         default=lambda self: self.env.company.currency_id,
         required=True
     )
+
     line_ids = fields.One2many(
         'epr.purchase.request.line',
         'request_id',
         string='Products'
     )
+
     estimated_total = fields.Monetary(
         string='Estimated Total',
         compute='_compute_estimated_total',
         store=True,
         currency_field='currency_id'
+    )
+
+    # Link sang RFQs
+    rfq_ids = fields.Many2many(
+        comodel_name='epr.rfq',
+        relation='epr_rfq_purchase_request_rel',  # Tên bảng trung gian
+        column1='request_id',
+        column2='rfq_id',
+        string='RFQs',
+        readonly=True
+    )
+
+    # Số lượng RFQ
+    rfq_count = fields.Integer(
+        compute='_compute_rfq_count',
+        string='RFQ Count'
     )
 
     # ==========================================================================
@@ -195,6 +207,12 @@ class EprPurchaseRequest(models.Model):
     #             ]
     #         else:
     #             request.approver_ids = False
+
+    # Compute RFQ count
+    @api.depends('rfq_ids')
+    def _compute_rfq_count(self):
+        for record in self:
+            record.rfq_count = len(record.rfq_ids)
 
     # ==========================================================================
     # HELPER METHODS (Tách logic tìm người duyệt ra riêng)
@@ -370,6 +388,26 @@ class EprPurchaseRequest(models.Model):
         # Cancel pending activities
         # NOTE: Commented out for testing without mail server
         # self.activity_ids.unlink()
+
+    # === ACTION SMART BUTTON ===
+    def action_view_rfqs(self):
+        """Mở danh sách các RFQ liên quan đến PR này"""
+        self.ensure_one()
+        return {
+            'name': _('Request for Quotations'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'epr.rfq',
+            'view_mode': 'list,form', # Odoo 18 ưu tiên dùng 'list' thay vì 'tree'
+            'domain': [('id', 'in', self.rfq_ids.ids)],
+            'context': {
+                'default_request_ids': [(6, 0, [self.id])], # Tự động link ngược lại PR này nếu tạo mới RFQ
+                'create': True,
+            },
+        }
+
+# ==============================================================================
+# CLASS CON: epr.purchase.request.line (Chi tiết hàng hóa trong PR)
+# ==============================================================================
 
 
 class EprPurchaseRequestLine(models.Model):

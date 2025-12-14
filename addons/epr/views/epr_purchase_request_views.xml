@@ -173,6 +173,7 @@
             <field name="model">epr.purchase.request</field>
             <field name="arch" type="xml">
                 <form string="Purchase Request">
+                                                         
                     <header>
                         <!-- Nút Submit: Chỉ hiện khi Draft -->
                         <button name="action_submit" 
@@ -210,6 +211,20 @@
                     </header>
 
                     <sheet>
+                        <!-- 
+                        BUTTON BOX: Khu vực chứa các nút thống kê/liên kết
+                        Thường đặt ở góc trên bên phải của sheet
+                        -->
+                        <div name="button_box" class="oe_button_box">
+                            <button name="action_view_rfqs"
+                                    type="object"
+                                    class="oe_stat_button"
+                                    icon="fa-list-alt"
+                                    invisible="rfq_count == 0">
+                                <field name="rfq_count" widget="statinfo" string="RFQs"/>
+                            </button>
+                        </div>
+
                         <!-- Ribbons trạng thái -->
                         <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
                         <widget name="web_ribbon" title="Rejected" bg_color="bg-danger" invisible="state != 'rejected'"/>

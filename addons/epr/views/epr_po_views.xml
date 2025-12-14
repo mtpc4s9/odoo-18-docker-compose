@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Kế thừa Form View chuẩn của Purchase Order -->
+        <record id="view_purchase_order_form_inherit_epr" model="ir.ui.view">
+            <field name="name">purchase.order.form.inherit.epr</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="purchase.purchase_order_form"/>
+            <field name="arch" type="xml">
+
+                <!-- 1. Thêm Smart Button liên kết ngược về RFQs -->
+                <div name="button_box" position="inside">
+                    <button name="action_view_epr_rfqs"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-files-o"
+                            invisible="epr_rfq_count == 0">
+                        <field name="epr_rfq_count" widget="statinfo" string="EPR RFQs"/>
+                    </button>
+                </div>
+
+                <!-- 2. Thêm cột tham chiếu RFQ vào danh sách sản phẩm (Mặc định ẩn) -->
+                <!-- Tìm xpath tới field order_line/list -->
+                <xpath expr="//field[@name='order_line']/list//field[@name='name']" position="after">
+                    <field name="epr_rfq_line_id" 
+                           string="Ref. RFQ" 
+                           optional="hide" 
+                           readonly="1"/>
+                </xpath>
+
+            </field>
+        </record>
+
+        <!-- Kế thừa Search View để cho phép tìm kiếm PO theo RFQ gốc -->
+        <record id="view_purchase_order_filter_inherit_epr" model="ir.ui.view">
+            <field name="name">purchase.order.search.inherit.epr</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="purchase.view_purchase_order_filter"/>
+            <field name="arch" type="xml">
+                <field name="origin" position="after">
+                    <!-- Cho phép search: "RFQ/2024/001" sẽ ra PO tương ứng -->
+                    <field name="epr_rfq_ids" string="EPR RFQ" filter_domain="[('epr_rfq_ids.name', 'ilike', self)]"/>
+                </field>
+            </field>
+        </record>
+
+        <!-- Action cho menu My POs -->
+        <record id="action_epr_po" model="ir.actions.act_window">
+            <field name="name">My Purchase Orders</field>
+            <field name="res_model">purchase.order</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('epr_rfq_count', '>', 0)]</field>
+            <field name="context">{'create': False}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No Purchase Orders created from EPR RFQs yet.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>
