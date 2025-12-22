@@ -25,3 +25,7 @@ access_epr_create_po_wizard_officer,ePR Create PO Wizard Officer,model_epr_creat
 access_epr_create_po_wizard_admin,ePR Create PO Wizard Admin,model_epr_create_po_wizard,group_epr_admin,1,1,1,1
 access_epr_create_po_line_wizard_officer,ePR Create PO Line Wizard Officer,model_epr_create_po_line_wizard,group_epr_purchasing_officer,1,1,1,1
 access_epr_create_po_line_wizard_admin,ePR Create PO Line Wizard Admin,model_epr_create_po_line_wizard,group_epr_admin,1,1,1,1
+access_epr_create_rfq_wizard_officer,ePR Create RFQ Wizard Officer,model_epr_create_rfq_wizard,group_epr_purchasing_officer,1,1,1,1
+access_epr_create_rfq_wizard_admin,ePR Create RFQ Wizard Admin,model_epr_create_rfq_wizard,group_epr_admin,1,1,1,1
+access_epr_create_rfq_line_officer,ePR Create RFQ Line Officer,model_epr_create_rfq_line,group_epr_purchasing_officer,1,1,1,1
+access_epr_create_rfq_line_admin,ePR Create RFQ Line Admin,model_epr_create_rfq_line,group_epr_admin,1,1,1,1

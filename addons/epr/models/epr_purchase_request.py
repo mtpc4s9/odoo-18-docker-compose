@@ -88,15 +88,15 @@ class EprPurchaseRequest(models.Model):
     )
 
     currency_id = fields.Many2one(
-        'res.currency',
+        comodel_name='res.currency',
         string='Currency',
         default=lambda self: self.env.company.currency_id,
         required=True
     )
 
     line_ids = fields.One2many(
-        'epr.purchase.request.line',
-        'request_id',
+        comodel_name='epr.purchase.request.line',
+        inverse_name='request_id',
         string='Products'
     )
 
@@ -397,10 +397,10 @@ class EprPurchaseRequest(models.Model):
             'name': _('Request for Quotations'),
             'type': 'ir.actions.act_window',
             'res_model': 'epr.rfq',
-            'view_mode': 'list,form', # Odoo 18 ưu tiên dùng 'list' thay vì 'tree'
+            'view_mode': 'list,form',
             'domain': [('id', 'in', self.rfq_ids.ids)],
             'context': {
-                'default_request_ids': [(6, 0, [self.id])], # Tự động link ngược lại PR này nếu tạo mới RFQ
+                'default_request_ids': [(6, 0, [self.id])],  # Tự động link ngược lại PR này nếu tạo mới RFQ
                 'create': True,
             },
         }
@@ -507,7 +507,7 @@ class EprPurchaseRequestLine(models.Model):
     final_vendor_id = fields.Many2one(
         comodel_name='res.partner',
         string='Final Vendor',
-        domain="[('supplier_rank', '>', 0)]",
+        # domain="[('supplier_rank', '>', 0)]",
         help="Nhà cung cấp chính thức được bộ phận Mua hàng chốt."
     )
 

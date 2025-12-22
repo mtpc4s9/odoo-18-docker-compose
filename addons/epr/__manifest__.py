@@ -34,6 +34,7 @@
         'views/epr_po_views.xml',
         'views/epr_menus.xml',
         'wizards/epr_reject_wizard_views.xml',
+        'wizards/epr_create_rfq_views.xml',
         'wizards/epr_create_po_views.xml',
     ],
     'assets': {

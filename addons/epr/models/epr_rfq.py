@@ -59,17 +59,15 @@ class EprRfq(models.Model):
         column2='request_id',
         string='Source Requests',
         # Chỉ lấy các PR đã duyệt để tạo RFQ
-        domain="[('state', '=', 'approved')]",
-        readonly=True
+        domain="[('state', '=', 'approved')]"
     )
 
     partner_id = fields.Many2one(
         comodel_name='res.partner',
         string='Vendor',
         required=True,
-        tracking=True,
+        tracking=True
         # domain="[('supplier_rank', '>', 0)]",  # Chỉ chọn đã từng được chọn qua ít nhất 01 lần
-        readonly=True
     )
 
     company_id = fields.Many2one(
@@ -105,8 +103,7 @@ class EprRfq(models.Model):
         comodel_name='epr.rfq.line',
         inverse_name='rfq_id',
         string='Products',
-        copy=True,
-        readonly=True
+        copy=True
     )
 
     # Link sang Purchase Order gốc của Odoo
@@ -121,11 +118,22 @@ class EprRfq(models.Model):
         string='PO Count'
     )
 
+    request_count = fields.Integer(
+        compute='_compute_request_count',
+        string='PR Count'
+    )
+
     # === 5. COMPUTE METHODS ===
     @api.depends('purchase_ids')
     def _compute_purchase_count(self):
         for rfq in self:
             rfq.purchase_count = len(rfq.purchase_ids)
+
+    # Link ngược về PR gốc
+    @api.depends('request_ids')
+    def _compute_request_count(self):
+        for rfq in self:
+            rfq.request_count = len(rfq.request_ids)
 
     # === 6. CRUD OVERRIDES ===
     @api.model_create_multi
@@ -225,9 +233,37 @@ class EprRfq(models.Model):
                 raise UserError(_("Chỉ có thể reset khi ở trạng thái Sent, To Approve hoặc Cancel."))
             rfq.write({'state': 'draft'})
 
+    # Mở danh sách các PO được tạo từ RFQ này
+    def action_view_purchase_orders(self):
+        """Mở danh sách các Purchase Orders (PO) được tạo từ RFQ này"""
+        self.ensure_one()
+        return {
+            'name': _('Purchase Orders'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'purchase.order',
+            'view_mode': 'list,form',
+            # Filter các PO có field epr_rfq_id khớp với ID hiện tại
+            'domain': [('epr_rfq_id', '=', self.id)],
+            'context': {'default_epr_rfq_id': self.id},
+            'target': 'current',
+        }
+
+    # Mở danh sách các PR gốc của RFQ này
+    def action_view_source_requests(self):
+        """Mở danh sách các PR gốc của RFQ này"""
+        self.ensure_one()
+        return {
+            'name': _('Source Purchase Requests'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'epr.purchase.request',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', self.request_ids.ids)],
+            'target': 'current',
+        }
     # -------------------------------------------------------------------------
     # RFQ APPROVAL PROCESS
     # -------------------------------------------------------------------------
+
     def action_submit_approval(self):
         """Nút bấm Submit for Approval"""
         self.ensure_one()
@@ -333,8 +369,7 @@ class EprRfqLine(models.Model):
     # Sản phẩm (Odoo Product)
     product_id = fields.Many2one(
         comodel_name='product.product',
-        string='Product',
-        required=True
+        string='Product'
     )
 
     description = fields.Text(
