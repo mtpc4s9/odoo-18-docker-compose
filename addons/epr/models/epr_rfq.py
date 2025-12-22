@@ -54,7 +54,7 @@ class EprRfq(models.Model):
     # Link ngược lại PR gốc (01 RFQ có thể gom nhiều PR)
     request_ids = fields.Many2many(
         comodel_name='epr.purchase.request',
-        relation='epr_rfq_purchase_request_rel', # Tên bảng trung gian
+        relation='epr_rfq_purchase_request_rel',  # Tên bảng trung gian
         column1='rfq_id',
         column2='request_id',
         string='Source Requests',
@@ -363,29 +363,48 @@ class EprRfqLine(models.Model):
         comodel_name='epr.rfq',
         string='RFQ Reference',
         required=True,
-        ondelete='cascade'
+        ondelete='cascade',
+        index=True
     )
 
-    # Sản phẩm (Odoo Product)
+    # === LIÊN KẾT VỚI PR (QUAN TRỌNG) ===
+    # Link về dòng chi tiết của PR gốc
+    pr_line_id = fields.Many2one(
+        'epr.purchase.request.line',
+        string='Source PR Line',
+        ondelete='set null',
+        index=True,
+        help="Dòng yêu cầu mua hàng gốc sinh ra dòng báo giá này."
+    )
+
+    # Link về PR Header (Tiện ích để group/filter)
+    purchase_request_id = fields.Many2one(
+        related='pr_line_id.request_id',
+        string='Purchase Request',
+        store=True,
+        readonly=True
+    )
+
+    # === SẢN PHẨM & CHI TIẾT ===
     product_id = fields.Many2one(
         comodel_name='product.product',
-        string='Product'
+        string='Product',
+        required=True
     )
 
-    description = fields.Text(
-        string='Description'
-    )
+    description = fields.Text(string='Description')
 
-    # Số lượng & Đơn giá (Có thể khác với PR ban đầu do đàm phán)
     quantity = fields.Float(
         string='Quantity',
         required=True,
-        default=1.0
+        default=1.0,
+        digits='Product Unit of Measure'
     )
 
     uom_id = fields.Many2one(
         comodel_name='uom.uom',
-        string='UoM'
+        string='UoM',
+        required=True
     )
 
     price_unit = fields.Float(
@@ -398,30 +417,40 @@ class EprRfqLine(models.Model):
         relation='epr_rfq_line_taxes_rel',
         column1='line_id',
         column2='tax_id',
-        string='Taxes'
+        string='Taxes',
+        context={'active_test': False}
     )
 
-    # Tổng tiền trên RFQ line
+    # === TÍNH TOÁN TIỀN TỆ ===
+    currency_id = fields.Many2one(
+        related='rfq_id.currency_id',
+        store=True, 
+        string='Currency',
+        readonly=True
+    )
+
     subtotal = fields.Monetary(
         compute='_compute_subtotal',
         string='Subtotal',
-        store=True
+        store=True,
+        currency_field='currency_id'
     )
 
-    currency_id = fields.Many2one(
-        related='rfq_id.currency_id'
-    )
-
-    @api.depends('quantity', 'price_unit')
+    @api.depends('quantity', 'price_unit', 'taxes_id')
     def _compute_subtotal(self):
+        """Tính tổng tiền (chưa bao gồm thuế)"""
         for line in self:
             line.subtotal = line.quantity * line.price_unit
 
+    # === ONCHANGE PRODUCT (GỢI Ý) ===
     @api.onchange('product_id')
     def _onchange_product_id(self):
+        """Tự động điền UoM và tên khi chọn sản phẩm"""
         if self.product_id:
-            self.description = self.product_id.display_name
             self.uom_id = self.product_id.uom_po_id or self.product_id.uom_id
+            self.description = self.product_id.display_name
+            # Tự động lấy thuế mua hàng mặc định của sản phẩm
+            self.taxes_id = self.product_id.supplier_taxes_id
 
     # ==============================================================================
     # LINE-LEVEL LINKING LOGIC (From RFQs to POs)

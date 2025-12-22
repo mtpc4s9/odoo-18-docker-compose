@@ -14,65 +14,78 @@ class EprCreateRfqWizard(models.TransientModel):
         string='PR Lines to Process'
     )
 
+    # -------------------------------------------------------------------------
+    # 1. LOAD DATA (BẮT BUỘC CÓ)
+    # -------------------------------------------------------------------------
     @api.model
     def default_get(self, fields_list):
         """
-        Khi mở Wizard, tự động load các PR đã chọn từ màn hình danh sách.
+        Lấy dữ liệu từ các PR được chọn (active_ids) và điền vào dòng Wizard.
         """
         res = super().default_get(fields_list)
+
+        # Lấy ID của các PR đang được chọn ở màn hình danh sách
         active_ids = self.env.context.get('active_ids', [])
 
         if not active_ids:
             return res
 
-        # Lấy danh sách PR gốc
+        # Đọc dữ liệu PR
         requests = self.env['epr.purchase.request'].browse(active_ids)
 
-        # Prepare dữ liệu cho dòng Wizard
+        # Kiểm tra trạng thái (Optional: chỉ cho phép gộp PR đã duyệt)
+        if any(pr.state != 'approved' for pr in requests):
+            raise UserError(_("Bạn chỉ có thể tạo RFQ từ các PR đã được phê duyệt."))
+
         lines_vals = []
         for pr in requests:
-            # Chỉ xử lý các PR đã được duyệt (Ví dụ trạng thái 'approved')
-            # Bạn có thể bỏ comment dòng dưới nếu có field state
-            if pr.state != 'approved':
-                raise UserError(_("PR %s chưa được duyệt.", pr.name))
-
-            for line in pr.line_ids:
+            # Loop qua từng dòng sản phẩm của PR để đưa vào Wizard
+            # Giả sử PR Line có model là 'epr.purchase.request.line'
+            for pr_line in pr.line_ids:
                 lines_vals.append(Command.create({
-                    'pr_line_id': line.id,  # Link tới PR Line
+                    # Link dữ liệu để truy vết sau này
                     'request_id': pr.id,
-                    'final_vendor_id': line.final_vendor_id.id if line.final_vendor_id else False,
-                    'suggested_vendor_name': line.suggested_vendor_name,
+                    'pr_line_id': pr_line.id,
+
+                    # Dữ liệu hiển thị/chỉnh sửa trên wizard
+                    'suggested_vendor_name': pr_line.suggested_vendor_name,
+                    'final_vendor_id': pr_line.final_vendor_id.id,
+
+                    'final_product_id': pr_line.product_id.id,
+                    'product_description': pr_line.name or pr_line.product_id.name,
+                    'quantity': pr_line.quantity,
+                    'uom_id': (
+                        pr_line.product_id.uom_po_id.id or
+                        pr_line.product_id.uom_id.id
+                    ),
                 }))
 
+        # Gán danh sách lệnh tạo dòng vào field line_ids
         res['line_ids'] = lines_vals
         return res
 
     def action_create_rfqs(self):
         """
-        Logic hardened with .sudo():
-        1. Access PR data using sudo to bypass security rules.
-        2. Group by Vendor.
-        3. Create RFQ Header and Lines using sudo() to ensure data persistence.
-        4. Redirect to the newly created RFQ(s).
+        Gộp PR thành RFQ:
+        1. Validate: Chọn đầy đủ Vendor & Product.
+        2. Gom nhóm theo Vendor.
+        3. Tạo RFQ Header & Lines (Dùng sudo để bypass quyền truy cập PR).
         """
         self.ensure_one()
 
-        # 1. Validation
-        missing_vendor_lines = self.line_ids.filtered(lambda l: not l.final_vendor_id)
-        if missing_vendor_lines:
-            raise UserError(_("Please select a Final Vendor for all lines."))
+        # 1. Validate & Sync Vendor
+        for line in self.line_ids:
+            if not line.final_vendor_id:
+                raise UserError(_("Vui lòng chọn Vendor cho sản phẩm: %s", line.product_description))
 
-        missing_product_lines = self.line_ids.filtered(lambda l: not l.final_product_id)
-        if missing_product_lines:
-            raise UserError(_("Please select a Final Product for all lines."))
+            if line.pr_line_id.final_vendor_id != line.final_vendor_id:
+                line.pr_line_id.sudo().write({
+                    'final_vendor_id': line.final_vendor_id.id
+                })
 
         # 2. Grouping
         grouped_lines = {}
         for wiz_line in self.line_ids:
-            # Sync back to PR line (Sudo to ensure write permission if needed)
-            if wiz_line.pr_line_id.final_vendor_id != wiz_line.final_vendor_id:
-                wiz_line.pr_line_id.sudo().write({'final_vendor_id': wiz_line.final_vendor_id.id})
-            
             vendor = wiz_line.final_vendor_id
             if vendor not in grouped_lines:
                 grouped_lines[vendor] = self.env['epr.create.rfq.line']
@@ -82,64 +95,52 @@ class EprCreateRfqWizard(models.TransientModel):
 
         # 3. RFQ Creation
         for vendor, wiz_lines in grouped_lines.items():
+            # A. Lấy danh sách PR unique cho field Many2many
+            source_requests = wiz_lines.mapped('request_id')
+
+            # B. Chuẩn bị dữ liệu lines (One2many)
             rfq_line_commands = []
-            source_pr_ids = []
-
             for wiz_line in wiz_lines:
-                # DÙNG SUDO: Để chắc chắn lấy được dữ liệu PR line
-                pr_line_sudo = wiz_line.pr_line_id.sudo()
-                request_sudo = wiz_line.request_id.sudo()
-                
-                # Collect unique source PR ids
-                if request_sudo and request_sudo.id not in source_pr_ids:
-                    source_pr_ids.append(request_sudo.id)
-
-                # Determine UoM (Directly from Product or PR Line)
-                uom_id = False
-                if wiz_line.final_product_id:
-                    uom_id = wiz_line.final_product_id.uom_po_id.id or wiz_line.final_product_id.uom_id.id
-                
-                if not uom_id and pr_line_sudo.product_id:
-                    uom_id = pr_line_sudo.product_id.uom_po_id.id or pr_line_sudo.product_id.uom_id.id
-
-                # Create line command - DÙNG GIÁ TRỊ TỪ SUDO RECORD
                 rfq_line_commands.append(Command.create({
                     'product_id': wiz_line.final_product_id.id,
-                    'description': pr_line_sudo.name or '',
-                    'quantity': pr_line_sudo.quantity or 1.0,
-                    'uom_id': uom_id,
-                    'price_unit': 0.0,
+                    'description': wiz_line.product_description,
+                    'quantity': wiz_line.quantity,
+                    'uom_id': wiz_line.uom_id.id,
+                    # Link ngược lại dòng PR gốc để truy vết
+                    'pr_line_id': wiz_line.pr_line_id.id
                 }))
 
-            # Create RFQ header - SỬ DỤNG SUDO ĐỂ TẠO
-            rfq = self.env['epr.rfq'].sudo().create({
+            # Tạo RFQ Header
+            rfq_vals = {
                 'partner_id': vendor.id,
                 'state': 'draft',
                 'date_order': fields.Datetime.now(),
-                'request_ids': [Command.set(source_pr_ids)],
+                'request_ids': [Command.set(source_requests.ids)],
                 'line_ids': rfq_line_commands,
-            })
+            }
+
+            rfq = self.env['epr.rfq'].create(rfq_vals)
             created_rfqs |= rfq
 
-        # 4. Result Action
+        # 4. Redirect
+        if not created_rfqs:
+            return {'type': 'ir.actions.act_window_close'}
+
+        action = {
+            'name': _('Generated RFQs'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'epr.rfq',
+            'context': {'create': False},
+        }
+
         if len(created_rfqs) == 1:
-            return {
-                'name': _('Request for Quotation'),
-                'type': 'ir.actions.act_window',
-                'res_model': 'epr.rfq',
-                'view_mode': 'form',
-                'res_id': created_rfqs.id,
-                'target': 'current',
-            }
+            action['view_mode'] = 'form'
+            action['res_id'] = created_rfqs.id
         else:
-            return {
-                'name': _('Requests for Quotation'),
-                'type': 'ir.actions.act_window',
-                'res_model': 'epr.rfq',
-                'view_mode': 'list,form',
-                'domain': [('id', 'in', created_rfqs.ids)],
-                'target': 'current',
-            }
+            action['view_mode'] = 'list,form' # Odoo 18 dùng 'list'
+            action['domain'] = [('id', 'in', created_rfqs.ids)]
+
+        return action
 
 
 class EprCreateRfqLine(models.TransientModel):
@@ -148,62 +149,52 @@ class EprCreateRfqLine(models.TransientModel):
 
     wizard_id = fields.Many2one('epr.create.rfq.wizard', string='Wizard')
 
-    # Link tới PR gốc (Readonly)
+    # Dữ liệu PR gốc
     request_id = fields.Many2one(
-        comodel_name='epr.purchase.request',
-        string='Purchase Request',
+        'epr.purchase.request',
+        string='PR',
         readonly=True
     )
 
-    # Link tới PR Line gốc
     pr_line_id = fields.Many2one(
-        comodel_name='epr.purchase.request.line',
+        'epr.purchase.request.line',
         string='PR Line',
         readonly=True
     )
 
-    # Cột hiển thị text gợi ý (Readonly) -> Giúp Officer tham chiếu
-    suggested_vendor_name = fields.Char(
-        string='Suggested Vendor (Text)',
-        readonly=True,
-        help="Tên nhà cung cấp do người yêu cầu nhập tay (tham khảo)."
-    )
+    suggested_vendor_name = fields.Char(string='Suggested Vendor', readonly=True)
 
-    # Cột Final Vendor (Editable) -> Đây là nơi Officer thao tác chính
+    # Cho phép User chọn/sửa trong Wizard
     final_vendor_id = fields.Many2one(
-        comodel_name='res.partner',
+        'res.partner',
         string='Final Vendor',
-        required=True,
-        # domain="[('supplier_rank', '>', 0)]",  # Chỉ lấy nhà cung cấp
-        help="Chọn nhà cung cấp chính thức trong hệ thống để tạo RFQ."
+        required=True
     )
 
-    # Lấy thông tin sản phẩm cần mua
-    product_description = fields.Char(
-        related='pr_line_id.name',
-        string='Product / Description',
-        readonly=True
-    )
-
-    # Purchasing Officer chọn sản phẩm tương ứng với mô tả của User
     final_product_id = fields.Many2one(
-        comodel_name='product.product',
+        'product.product',
         string='Final Product',
-        required=True,
-        # domain="[('purchase_ok', '=', True)]",
-        help="Chọn sản phẩm tương ứng với mô tả của người yêu cầu."
+        required=True
     )
 
-    # Lấy số lượng
+    product_description = fields.Char(string='Description')
     quantity = fields.Float(
-        related='pr_line_id.quantity',
         string='Qty',
+        digits='Product Unit of Measure'
+    )
+
+    uom_id = fields.Many2one(
+        'uom.uom',
+        string='UoM'
+    )
+
+    uom_name = fields.Char(
+        string='PR UoM',
         readonly=True
     )
 
-    # Lấy đơn vị tính
-    uom_name = fields.Char(
-        related='pr_line_id.uom_name',
-        string='UoM',
-        readonly=True
-    )
+    @api.onchange('final_product_id')
+    def _onchange_final_product_id(self):
+        if self.final_product_id:
+            product = self.final_product_id
+            self.uom_id = product.uom_po_id or product.uom_id

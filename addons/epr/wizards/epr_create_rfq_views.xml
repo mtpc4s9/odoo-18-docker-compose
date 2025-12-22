@@ -21,10 +21,14 @@
                         <list editable="bottom" create="0" delete="0" 
                               decoration-danger="not final_vendor_id">
                             <!-- PR Reference (readonly) -->
-                            <field name="request_id" string="PR Ref"/>
+                            <field name="request_id" 
+                                   string="Source PR" 
+                                   readonly="1" 
+                                   force_save="1" 
+                                   options="{'no_open': True}"/>
                             
-                            <!-- Product Description -->
-                            <field name="product_description" readonly="1"/>
+                            <!-- Product Description (now editable as requested) -->
+                            <field name="product_description"/>
                             
                             <!-- Final Product (editable - main action field) -->
                             <field name="final_product_id"
@@ -37,7 +41,8 @@
                             <field name="quantity"/>
                             
                             <!-- UOM -->
-                            <field name="uom_name" optional="show"/>
+                            <field name="uom_name" optional="show" string="PR UoM"/>
+                            <field name="uom_id" groups="uom.group_uom" optional="show"/>
 
                             <!-- Suggested Vendor Text (readonly - for reference) -->
                             <field name="suggested_vendor_name" 
