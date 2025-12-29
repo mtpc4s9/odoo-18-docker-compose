@@ -71,6 +71,14 @@
             action="action_epr_rfq"
             sequence="10"/>
 
+        <!-- Menu: RFQs Pending Approvals -->
+        <menuitem
+            id="menu_epr_rfq_to_approve"
+            name="Pending Approvals"
+            parent="menu_epr_rfq_category"
+            action="action_epr_my_approvals"
+            sequence="20"/>
+
         <!-- Menu: My POs -->
         <menuitem
             id="menu_epr_po_act"
@@ -134,7 +142,7 @@
         <menuitem id="menu_epr_config_approval_rules"
                   name="Approval Rules"
                   parent="menu_epr_config"
-                  action="action_epr_approval_config"
+                  action="action_epr_approval_rule"
                   sequence="40"
                   groups="epr.group_epr_admin,epr.group_epr_purchasing_officer"/>
         

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api, _
+from odoo import models, fields, api, Command, _
 from odoo.exceptions import UserError, ValidationError
 
 
@@ -26,7 +26,8 @@ class EprRfq(models.Model):
             ('sent', 'Sent'),
             ('received', 'Received'),      # Nhà cung cấp đã báo giá
             ('to_approve', 'To Approve'),  # Trình sếp duyệt giá
-            ('confirmed', 'Confirmed'),    # Đã duyệt -> Sẵn sàng tạo PO
+            ('approved', 'Approved'),      # Đã duyệt xong, chờ PO
+            ('confirmed', 'Confirmed'),    # Đã chốt -> Đang tạo/Có PO
             ('cancel', 'Cancelled')
         ],
         string='Status',
@@ -37,10 +38,23 @@ class EprRfq(models.Model):
         tracking=True
     )
 
-    approval_ids = fields.One2many(
+    # Tích hợp với Approval Entry
+    approval_state = fields.Selection(
+        selection=[
+            ('draft', 'Not Required'),
+            ('pending', 'Pending'),
+            ('approved', 'Approved'),
+            ('refused', 'Refused')
+        ],
+        string='Approval Matrix Status',
+        compute='_compute_approval_state',
+        store=True
+    )
+
+    approval_entry_ids = fields.One2many(
         comodel_name='epr.approval.entry',
         inverse_name='rfq_id',
-        string='Approval Steps'
+        string='Approvals'
     )
 
     # Tính tổng tiền trên RFQ để so sánh trong approval process
@@ -49,6 +63,20 @@ class EprRfq(models.Model):
         string='Total',
         currency_field='currency_id'
     )
+
+    department_id = fields.Many2one(
+        comodel_name='hr.department',
+        compute='_compute_department_id',
+        string='Department',
+        store=True,
+        help="Phòng ban của người yêu cầu (lấy từ PR đầu tiên)."
+    )
+
+    @api.depends('request_ids.department_id')
+    def _compute_department_id(self):
+        for rfq in self:
+            # Lấy phòng ban từ PR đầu tiên gắn với RFQ này
+            rfq.department_id = rfq.request_ids[:1].department_id or False
 
     # === 2. RELATIONS ===
     # Link ngược lại PR gốc (01 RFQ có thể gom nhiều PR)
@@ -106,10 +134,12 @@ class EprRfq(models.Model):
         copy=True
     )
 
-    # Link sang Purchase Order gốc của Odoo
-    purchase_ids = fields.One2many(
+    # Link sang Purchase Order gốc của Odoo (Many2many)
+    purchase_ids = fields.Many2many(
         comodel_name='purchase.order',
-        inverse_name='epr_rfq_id',
+        relation='epr_rfq_purchase_order_rel',
+        column1='epr_rfq_id',
+        column2='purchase_id',
         string='Purchase Orders'
     )
 
@@ -123,7 +153,9 @@ class EprRfq(models.Model):
         string='PR Count'
     )
 
-    # === 5. COMPUTE METHODS ===
+    # -------------------------------------------------------------------------
+    # 5. COMPUTE METHODS
+    # -------------------------------------------------------------------------
     @api.depends('purchase_ids')
     def _compute_purchase_count(self):
         for rfq in self:
@@ -134,6 +166,24 @@ class EprRfq(models.Model):
     def _compute_request_count(self):
         for rfq in self:
             rfq.request_count = len(rfq.request_ids)
+
+    # Compute Approval State
+    @api.depends('approval_entry_ids.status')
+    def _compute_approval_state(self):
+        for rfq in self:
+            if not rfq.approval_entry_ids:
+                rfq.approval_state = 'draft'
+                continue
+
+            # Nếu có bất kỳ dòng nào bị từ chối -> Toàn bộ bị từ chối
+            if any(e.status == 'refused' for e in rfq.approval_entry_ids):
+                rfq.approval_state = 'refused'
+            # Nếu tất cả đã duyệt -> Approved
+            elif all(e.status == 'approved' for e in rfq.approval_entry_ids):
+                rfq.approval_state = 'approved'
+            # Còn lại là đang chờ
+            else:
+                rfq.approval_state = 'pending'
 
     # === 6. CRUD OVERRIDES ===
     @api.model_create_multi
@@ -167,12 +217,14 @@ class EprRfq(models.Model):
                 raise UserError(_("Chỉ có thể đánh dấu 'Đã nhận' khi RFQ đang ở trạng thái 'Đã gửi'."))
             rfq.write({'state': 'received'})
 
-    def action_confirm_rfq(self):
+    def action_confirm(self):
         """Chốt RFQ, chuyển sang Confirmed"""
         for rfq in self:
-            if rfq.state != 'received':
-                raise UserError(_("Vui lòng chuyển sang trạng thái 'Đã nhận' trước khi xác nhận."))
-            rfq.write({'state': 'confirmed'})
+            if rfq.state != 'approved':
+                raise UserError(_("Chỉ có thể xác nhận khi RFQ đã được duyệt (Trạng thái 'Approved')."))
+            rfq.write({
+                'state': 'confirmed',
+            })
 
     def action_cancel_rfq(self):
         """Hủy RFQ ở bất kỳ trạng thái nào (trừ khi đã hủy rồi)"""
@@ -196,7 +248,7 @@ class EprRfq(models.Model):
         po_vals = {
             'partner_id': self.partner_id.id,
             'date_order': fields.Datetime.now(),
-            'epr_rfq_id': self.id,  # Link ngược lại RFQ này
+            'epr_source_rfq_ids': [Command.link(self.id)],  # Link ngược lại RFQ này (Many2many)
             'origin': self.name,
             'company_id': self.company_id.id,
             'currency_id': self.currency_id.id,
@@ -242,9 +294,9 @@ class EprRfq(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'purchase.order',
             'view_mode': 'list,form',
-            # Filter các PO có field epr_rfq_id khớp với ID hiện tại
-            'domain': [('epr_rfq_id', '=', self.id)],
-            'context': {'default_epr_rfq_id': self.id},
+            # Filter các PO có field epr_source_rfq_ids chứa ID hiện tại
+            'domain': [('epr_source_rfq_ids', 'in', self.ids)],
+            'context': {'default_epr_source_rfq_ids': [Command.link(self.id)]},
             'target': 'current',
         }
 
@@ -265,90 +317,102 @@ class EprRfq(models.Model):
     # -------------------------------------------------------------------------
 
     def action_submit_approval(self):
-        """Nút bấm Submit for Approval"""
+        """Nút bấm Submit for Approval - Odoo 18 Optimized"""
         self.ensure_one()
+
         if not self.line_ids:
             raise UserError(_("Vui lòng nhập chi tiết sản phẩm trước khi trình duyệt."))
 
-        # 1. Tìm các Rules phù hợp
-        configs = self.env['epr.approval.config'].search([
+        # 1. Quy đổi tiền tệ
+        currency_company = self.company_id.currency_id
+        amount_company = self.amount_total
+        if self.currency_id and self.currency_id != currency_company:
+            amount_company = self.currency_id._convert(
+                self.amount_total, currency_company, self.company_id, 
+                self.date_order or fields.Date.context_today(self)
+            )
+
+        # 2. Tìm Rule phù hợp
+        rule = self.env['epr.approval.rule'].search([
             ('active', '=', True),
             ('company_id', '=', self.company_id.id),
-            ('min_amount', '<=', self.amount_total)
-        ], order='sequence asc')
+            '|', ('department_id', '=', False), ('department_id', '=', self.department_id.id)
+        ], order='department_id desc, sequence asc, id desc', limit=1)
 
-        if not configs:
-            # Nếu không có rule nào -> Auto Approve
-            self.write({'state': 'received'})  # Hoặc trạng thái tiếp theo bạn muốn
+        if not rule:
+            self.write({'state': 'approved', 'approval_state': 'approved'})
+            return 
+        # 3. Lọc các bước duyệt dựa trên giá trị đơn hàng
+        applicable_lines = rule.line_ids.filtered(
+            lambda l: (not l.min_amount or l.min_amount <= amount_company)
+        ).sorted('sequence')
+
+        if not applicable_lines:
+            self.write({'state': 'approved', 'approval_state': 'approved'})
             return
 
-        # 2. Xóa dữ liệu duyệt cũ (nếu submit lại)
-        self.approval_ids.unlink()
+        # 3. Lọc và Sắp xếp các bước duyệt
+        applicable_lines = rule.line_ids.filtered(
+            lambda l: (not l.min_amount or l.min_amount <= amount_company)
+        ).sorted('sequence')
+        if not applicable_lines:
+            self.write({'state': 'approved', 'approval_state': 'approved'})
+            return
 
-        # 3. Tạo Approval Entries (Snapshot)
-        approval_vals = []
-        for conf in configs:
-            approval_vals.append({
+        # 4. Hỗ trợ Duyệt song song cùng tầng (Sequence)
+        self.approval_entry_ids.unlink()
+        vals_list = []
+        min_seq = applicable_lines[0].sequence
+        for line in applicable_lines:
+            # Nếu cùng tầng Sequence nhỏ nhất -> 'new' luôn
+            status = 'new' if line.sequence == min_seq else 'pending'
+            vals_list.append({
                 'rfq_id': self.id,
-                'config_id': conf.id,  # Nếu bạn muốn link lại
-                'name': conf.name,
-                'sequence': conf.sequence,
-                'approval_type': conf.approval_type,
-                'required_user_ids': [(6, 0, conf.user_ids.ids)],
-                'status': 'new',  # Mặc định là new
+                'name': line.name,
+                'sequence': line.sequence,
+                'status': status,
+                'required_user_ids': [Command.set(line.user_ids.ids)],
+                'rule_line_id': line.id,
             })
+        self.env['epr.approval.entry'].create(vals_list)
 
-        self.env['epr.approval.entry'].create(approval_vals)
+        self.write({
+            'state': 'to_approve', 
+            'approval_state': 'pending'
+        })
 
-        # 4. Chuyển trạng thái và Kích hoạt tầng đầu tiên
-        self.write({'state': 'to_approve'})
-        self._check_approval_progression()
+        # Optional: Gửi email thông báo cho người duyệt bước đầu tiên
+        # self._notify_next_approvers()
 
     # -------------------------------------------------------------------------
     # APPROVAL LOGIC: LINEARIZATION
     # -------------------------------------------------------------------------
-    def _check_approval_progression(self):
-        """Hàm này được gọi mỗi khi có 1 dòng được Approved hoặc khi mới Submit"""
+    def _check_approval_completion(self):
+        """
+        Hàm này được gọi mỗi khi 1 dòng entry được Approve/Refuse.
+        Nhiệm vụ: Kích hoạt bước tiếp theo hoặc Confirm RFQ.
+        """
         self.ensure_one()
 
-        # Lấy tất cả entries
-        all_entries = self.approval_ids
+        # A. Nếu có bất kỳ dòng nào bị từ chối -> Hủy toàn bộ quy trình
+        if any(e.status == 'refused' for e in self.approval_entry_ids):
+            self.write({
+                'state': 'cancel',
+                'approval_state': 'refused'
+            })
 
-        # 1. Tìm các Sequence đang 'pending' (Đang chạy)
-        current_pending = all_entries.filtered(lambda x: x.status == 'pending')
-
-        if current_pending:
-            # Nếu còn dòng đang pending -> Chưa làm gì cả, đợi user khác duyệt tiếp
             return
 
-        # 2. Nếu không còn pending, tìm Sequence nhỏ nhất đang là 'new' (Chưa chạy)
-        next_new_entries = all_entries.filtered(lambda x: x.status == 'new')
+        remaining = self.approval_entry_ids.filtered(lambda e: e.status in ['new', 'pending']).sorted('sequence')
+        if not remaining:
+            self.write({'state': 'approved', 'approval_state': 'approved'})
+            return
 
-        if next_new_entries:
-            # Tìm số sequence nhỏ nhất tiếp theo
-            min_seq = min(next_new_entries.mapped('sequence'))
-
-            # Kích hoạt TOÀN BỘ các rule có cùng sequence đó (Parallel Approval)
-            to_activate = next_new_entries.filtered(lambda x: x.sequence == min_seq)
-            to_activate.write({'status': 'pending'})
-
-            # Gửi thông báo/Email cho những người vừa được kích hoạt (Optional)
-            # self._notify_approvers(to_activate)
-        else:
-            # 3. Không còn 'new', cũng không còn 'pending' -> Tất cả đã Approved
-            # Chuyển RFQ sang bước tiếp theo
-            self.action_mark_approved()
-
-    def action_mark_approved(self):
-        """Hoàn tất quy trình duyệt"""
-        # Chuyển sang trạng thái 'Confirmed'
-        self.write({'state': 'confirmed'}) 
-        self.message_post(body=_("Tất cả các cấp phê duyệt đã hoàn tất."))
-
-    def action_reject_approval(self):
-        """Xử lý khi bị từ chối"""
-        self.write({'state': 'draft'})  # Quay về nháp để sửa
-        self.message_post(body=_("Yêu cầu phê duyệt đã bị từ chối."))
+        # Nếu tầng hiện tại đã duyệt xong hết (không còn ai status='new')
+        if not remaining.filtered(lambda e: e.status == 'new'):
+            # Kích hoạt tầng tiếp theo (tất cả các dòng có Sequence nhỏ nhất còn lại)
+            next_min_seq = remaining[0].sequence
+            remaining.filtered(lambda e: e.sequence == next_min_seq).write({'status': 'new'})
 
 # ==============================================================================
 # CLASS CON: epr.rfq.line (Chi tiết hàng hóa trong RFQ)
@@ -440,7 +504,16 @@ class EprRfqLine(models.Model):
     def _compute_subtotal(self):
         """Tính tổng tiền (chưa bao gồm thuế)"""
         for line in self:
-            line.subtotal = line.quantity * line.price_unit
+            taxes = line.taxes_id.compute_all(
+                line.price_unit,
+                line.currency_id,
+                line.quantity,
+                product=line.product_id,
+                partner=line.rfq_id.partner_id
+            )
+            # Nếu bạn muốn duyệt dựa trên GIÁ SAU THUẾ, dùng 'total_included'
+            # Nếu muốn duyệt trên GIÁ TRƯỚC THUẾ, dùng 'total_excluded'
+            line.subtotal = taxes['total_included']
 
     # === ONCHANGE PRODUCT (GỢI Ý) ===
     @api.onchange('product_id')

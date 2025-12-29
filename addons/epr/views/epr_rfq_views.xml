@@ -52,11 +52,17 @@
                                 class="oe_highlight"
                                 invisible="state != 'sent'"/>
                         
-                        <button name="action_confirm_rfq"
-                                string="Confirm RFQ"
+                        <button name="action_submit_approval"
+                                string="Get Approval"
                                 type="object"
                                 class="oe_highlight"
                                 invisible="state != 'received'"/>
+                        
+                        <button name="action_confirm"
+                                string="Confirm RFQ"
+                                type="object"
+                                class="oe_highlight"
+                                invisible="state != 'approved'"/>
                         
                         <button name="action_cancel_rfq"
                                 string="Cancel RFQ"
@@ -74,10 +80,10 @@
                                 string="Reset to Draft"
                                 type="object"
                                 class="btn-warning"
-                                invisible="state not in ('sent', 'to_approve', 'cancel')"/>
+                                invisible="state not in ('sent', 'to_approve', 'approved', 'cancel')"/>
 
                         <!-- Widget Statusbar: Hiển thị quy trình -->
-                        <field name="state" widget="statusbar" statusbar_visible="draft,sent,received,to_approve,confirmed"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,sent,received,to_approve,approved,confirmed"/>
                     </header>
 
                     <sheet>
@@ -129,18 +135,14 @@
                         <!-- NOTEBOOK: Tab chi tiết -->
                         <notebook>
                             <page string="Products" name="products">
-                                <field name="line_ids" readonly="state != 'draft'">
-                                    <!-- 
-                                        LIST EDITABLE: Cho phép sửa trực tiếp trên dòng 
-                                        Lưu ý: Dùng thẻ <list> thay vì <tree>
-                                    -->
+                                <field name="line_ids" readonly="state not in ('draft', 'received')">
                                     <list editable="bottom">
-                                        <field name="product_id"/>
+                                        <field name="product_id" readonly="parent.state != 'draft'"/>
                                         <field name="description" optional="show"/>
-                                        <field name="quantity"/>
-                                        <field name="uom_id" groups="uom.group_uom"/>
-                                        <field name="price_unit"/>
-                                        <field name="taxes_id" widget="many2many_tags" optional="show"/>
+                                        <field name="quantity" readonly="parent.state not in ('draft', 'received')"/>
+                                        <field name="uom_id" groups="uom.group_uom" readonly="parent.state != 'draft'"/>
+                                        <field name="price_unit" readonly="parent.state not in ('draft', 'received')"/>
+                                        <field name="taxes_id" widget="many2many_tags" optional="show" readonly="parent.state not in ('draft', 'received')"/>
                                         
                                         <!-- Monetary: Tự động hiển thị ký hiệu tiền tệ dựa trên currency_id -->
                                         <field name="subtotal" widget="monetary"/>
@@ -163,12 +165,30 @@
                                 </group>
                             </page>
 
-                            <page string="Approvals" name="approvals" invisible="state == 'draft'">
-                                <field name="approval_ids" 
-                                       nolabel="1"
-                                       readonly="1"
-                                       context="{'default_rfq_id': id}"/>
-                            </page> 
+                            <page string="Approval Matrix" name="approval_matrix">
+                                <field name="approval_entry_ids" readonly="1">
+                                    <list editable="bottom" create="0" delete="0" decoration-success="status=='approved'" decoration-danger="status=='refused'">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="name"/>
+                                        <field name="required_user_ids" widget="many2many_tags"/>
+                                        <field name="status" widget="badge" 
+                                               decoration-info="status == 'new'" 
+                                               decoration-success="status == 'approved'"
+                                               decoration-muted="status == 'pending'"/>
+                                        <field name="actual_user_id"/>
+                                        <field name="approval_date"/>
+                                        <field name="can_approve" column_invisible="True"/>
+                                        
+                                        <!-- Buttons -->
+                                        <button name="action_approve_line" string="Approve" type="object" 
+                                                icon="fa-check" class="text-success"
+                                                invisible="not can_approve"/>
+                                        <button name="action_refuse_line" string="Refuse" type="object" 
+                                                icon="fa-times" class="text-danger"
+                                                invisible="not can_approve"/>
+                                    </list>
+                                </field>
+                            </page>
 
                             <page string="Source Requests" name="source_requests">
                                 <field name="request_ids" readonly="1">
@@ -182,6 +202,7 @@
                             </page>
 
                         </notebook>
+                        
                     </sheet>
                     
                     <!-- CHATTER: Khu vực lịch sử và tin nhắn -->
