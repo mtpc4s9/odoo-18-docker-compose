@@ -28,6 +28,7 @@ class EprRfq(models.Model):
             ('to_approve', 'To Approve'),  # Trình sếp duyệt giá
             ('approved', 'Approved'),      # Đã duyệt xong, chờ PO
             ('confirmed', 'Confirmed'),    # Đã chốt -> Đang tạo/Có PO
+            ('rejected', 'Rejected'),      # Đã từ chối
             ('cancel', 'Cancelled')
         ],
         string='Status',
@@ -62,6 +63,14 @@ class EprRfq(models.Model):
         compute='_compute_amount_total',
         string='Total',
         currency_field='currency_id'
+    )
+
+    # Stores the reason directly on the RFQ for easy visibility
+    rejection_reason = fields.Text(
+        string='Rejection Reason',
+        readonly=True,
+        tracking=True,
+        help="The reason why this RFQ was rejected."
     )
 
     department_id = fields.Many2one(
@@ -278,11 +287,50 @@ class EprRfq(models.Model):
             'target': 'current',
         }
 
+    def action_reject(self):
+        """
+        Opens the specific RFQ Rejection Wizard.
+        """
+        self.ensure_one()
+        return {
+            'name': _('Reject RFQ'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'epr.reject.rfq.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_reason': self.rejection_reason or '', # Optional: Pre-fill if needed
+                'active_id': self.id,
+                'active_model': 'epr.rfq'
+            }
+        }
+
+    # === CALLBACK: HANDLE REJECTION ===
+    def action_handle_rejection(self, reason):
+        """
+        Callback method called by the Wizard after confirmation.
+        1. Updates the state to 'cancel' (or keeps it in a specific rejected state).
+        2. Stores the reason.
+        """
+        for rfq in self:
+            rfq.write({
+                'state': 'rejected',            # Move RFQ to Cancelled state
+                'approval_state': 'refused',    # Update Approval Matrix status
+                'rejection_reason': reason      # Persist the reason on the main record
+            })
+
+            # Log a chatter message for visibility
+            # rfq.message_post(
+            #     body=_("RFQ has been rejected. Reason: %s") % reason,
+            #     message_type='comment',
+            #     subtype_xmlid='mail.mt_note'
+            # )
+
     def action_reset_draft(self):
         """Cho phép quay lại Draft nếu cần sửa"""
         for rfq in self:
-            if rfq.state not in ['sent', 'to_approve', 'cancel']:
-                raise UserError(_("Chỉ có thể reset khi ở trạng thái Sent, To Approve hoặc Cancel."))
+            if rfq.state not in ['sent', 'to_approve', 'cancel', 'rejected']:
+                raise UserError(_("Chỉ có thể reset khi ở trạng thái Sent, To Approve, Cancel hoặc Rejected."))
             rfq.write({'state': 'draft'})
 
     # Mở danh sách các PO được tạo từ RFQ này
@@ -360,7 +408,7 @@ class EprRfq(models.Model):
             return
 
         # 4. Hỗ trợ Duyệt song song cùng tầng (Sequence)
-        self.approval_entry_ids.unlink()
+        self.sudo().approval_entry_ids.unlink()
         vals_list = []
         min_seq = applicable_lines[0].sequence
         for line in applicable_lines:
@@ -397,7 +445,7 @@ class EprRfq(models.Model):
         # A. Nếu có bất kỳ dòng nào bị từ chối -> Hủy toàn bộ quy trình
         if any(e.status == 'refused' for e in self.approval_entry_ids):
             self.write({
-                'state': 'cancel',
+                'state': 'rejected',
                 'approval_state': 'refused'
             })
 

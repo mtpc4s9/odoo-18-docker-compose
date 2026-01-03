@@ -17,17 +17,32 @@ class PurchaseOrder(models.Model):
         help="Danh sách các phiếu yêu cầu báo giá (EPR RFQ) nguồn tạo nên PO này."
     )
 
+    epr_source_pr_ids = fields.Many2many(
+        comodel_name='epr.purchase.request',
+        relation='epr_pr_purchase_order_rel',
+        column1='purchase_id',
+        column2='epr_pr_id',
+        string='Source ePR Requests',
+        copy=False,
+        readonly=True,
+    )
+
     # === COMPUTED FIELDS CHO SMART BUTTON (Line-Level Linking) ===
     epr_rfq_count = fields.Integer(
         string='RFQ Count',
-        compute='_compute_epr_rfq_count'
+        compute='_compute_epr_counts'
     )
 
-    @api.depends('epr_source_rfq_ids')
-    def _compute_epr_rfq_count(self):
+    epr_pr_count = fields.Integer(
+        string='PR Count',
+        compute='_compute_epr_counts'
+    )
+
+    @api.depends('epr_source_rfq_ids', 'epr_source_pr_ids')
+    def _compute_epr_counts(self):
         for po in self:
-            # Đếm trực tiếp từ field Many2many đã lưu trữ
             po.epr_rfq_count = len(po.epr_source_rfq_ids)
+            po.epr_pr_count = len(po.epr_source_pr_ids)
 
     # === ACTION SMART BUTTON ===
     def action_view_epr_rfqs(self):
@@ -53,6 +68,19 @@ class PurchaseOrder(models.Model):
             'view_mode': 'list,form',
             'domain': [('id', 'in', rfq_ids)],
             'context': {'create': False}, 
+        }
+
+    def action_view_epr_prs(self):
+        """Mở danh sách các PR nguồn"""
+        self.ensure_one()
+        pr_ids = self.epr_source_pr_ids.ids
+        return {
+            'name': _('Source PRs'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'epr.purchase.request',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', pr_ids)],
+            'context': {'create': False},
         }
 
 

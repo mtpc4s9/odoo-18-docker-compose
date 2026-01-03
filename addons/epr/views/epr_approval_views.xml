@@ -113,10 +113,11 @@
                        decoration-muted="status == 'pending'"/>
                 <field name="actual_user_id"/>
                 <field name="approval_date"/>
+                <field name="rejection_reason" optional="show"/>
                 <button name="action_approve_line" string="Approve" type="object" 
                         icon="fa-check text-success" 
                         invisible="not can_approve"/>
-                <button name="action_refuse_line" string="Refuse" type="object" 
+                <button name="action_reject_line" string="Refuse" type="object" 
                         icon="fa-times text-danger" 
                         invisible="not can_approve"/>
                 <field name="can_approve" column_invisible="True"/>
@@ -134,7 +135,7 @@
                     <button name="action_approve_line" string="Approve" type="object" 
                             class="oe_highlight" invisible="not can_approve" 
                             confirm="Are you sure you want to approve this request?"/>
-                    <button name="action_refuse_line" string="Refuse" type="object" 
+                    <button name="action_reject_line" string="Refuse" type="object" 
                             invisible="not can_approve"/>
                     <field name="status" widget="statusbar"/>
                 </header>

@@ -11,9 +11,7 @@
             id="menu_epr_root"
             name="eProcurement"
             sequence="10"
-            web_icon="epr,static/description/icon.png"
-            groups="epr.group_epr_user"/> 
-            <!-- Chỉ hiện cho nhóm User (và Manager vì Manager kế thừa User) -->
+            web_icon="epr,static/description/icon.png"/> 
 
         <!-- 
             ===================================================================
@@ -77,7 +75,8 @@
             name="Pending Approvals"
             parent="menu_epr_rfq_category"
             action="action_epr_my_approvals"
-            sequence="20"/>
+            sequence="20"
+            groups="epr.group_epr_manager,epr.group_epr_admin"/>
 
         <!-- Menu: My POs -->
         <menuitem

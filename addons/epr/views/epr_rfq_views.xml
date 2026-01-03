@@ -58,6 +58,12 @@
                                 class="oe_highlight"
                                 invisible="state != 'received'"/>
                         
+                        <button name="action_reject"
+                                string="Reject"
+                                type="object"
+                                class="btn-danger"
+                                invisible="state != 'to_approve'"/>
+                        
                         <button name="action_confirm"
                                 string="Confirm RFQ"
                                 type="object"
@@ -80,10 +86,10 @@
                                 string="Reset to Draft"
                                 type="object"
                                 class="btn-warning"
-                                invisible="state not in ('sent', 'to_approve', 'approved', 'cancel')"/>
+                                invisible="state not in ('sent', 'to_approve', 'approved', 'rejected', 'cancel')"/>
 
                         <!-- Widget Statusbar: Hiển thị quy trình -->
-                        <field name="state" widget="statusbar" statusbar_visible="draft,sent,received,to_approve,approved,confirmed"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,sent,received,to_approve,approved,confirmed,rejected"/>
                     </header>
 
                     <sheet>
@@ -167,7 +173,7 @@
 
                             <page string="Approval Matrix" name="approval_matrix">
                                 <field name="approval_entry_ids" readonly="1">
-                                    <list editable="bottom" create="0" delete="0" decoration-success="status=='approved'" decoration-danger="status=='refused'">
+                                    <list editable="bottom" create="0" delete="0" decoration-success="status=='approved'" decoration-danger="status=='rejected'">
                                         <field name="sequence" widget="handle"/>
                                         <field name="name"/>
                                         <field name="required_user_ids" widget="many2many_tags"/>
@@ -177,13 +183,14 @@
                                                decoration-muted="status == 'pending'"/>
                                         <field name="actual_user_id"/>
                                         <field name="approval_date"/>
+                                        <field name="rejection_reason"/>
                                         <field name="can_approve" column_invisible="True"/>
                                         
                                         <!-- Buttons -->
                                         <button name="action_approve_line" string="Approve" type="object" 
                                                 icon="fa-check" class="text-success"
                                                 invisible="not can_approve"/>
-                                        <button name="action_refuse_line" string="Refuse" type="object" 
+                                        <button name="action_reject_line" string="Reject" type="object" 
                                                 icon="fa-times" class="text-danger"
                                                 invisible="not can_approve"/>
                                     </list>

@@ -39,6 +39,7 @@
 
                             <!-- Quantity -->
                             <field name="quantity"/>
+                            <field name="price_unit" string="Est. Price"/>
                             
                             <!-- UOM -->
                             <field name="uom_name" optional="show" string="PR UoM"/>

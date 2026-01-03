@@ -10,15 +10,13 @@ class EprCreatePoWizard(models.TransientModel):
     partner_id = fields.Many2one(
         comodel_name='res.partner',
         string='Vendor',
-        required=True,
-        readonly=True
+        required=True
     )
 
     currency_id = fields.Many2one(
         comodel_name='res.currency',
         string='Currency',
-        required=True,
-        readonly=True
+        required=True
     )
 
     # Danh sách các dòng sẽ được đẩy vào PO (Cho phép user bỏ tick để xé nhỏ RFQ)
@@ -61,7 +59,7 @@ class EprCreatePoWizard(models.TransientModel):
                         'rfq_line_id': line.id,
                         'product_id': line.product_id.id,
                         'description': line.description,
-                        'quantity': line.quantity, # User có thể sửa số lượng tại wizard nếu muốn partial
+                        'quantity': line.quantity,  # User có thể sửa số lượng tại wizard nếu muốn partial
                         'price_unit': line.price_unit,
                         'uom_id': line.uom_id.id,
                         'taxes_id': [Command.set(line.taxes_id.ids)],
@@ -82,12 +80,17 @@ class EprCreatePoWizard(models.TransientModel):
         if not self.line_ids:
             raise UserError(_("Vui lòng chọn ít nhất một dòng sản phẩm."))
 
+        rfq_ids = self.line_ids.mapped('rfq_line_id.rfq_id').ids
+        pr_ids = self.line_ids.mapped('rfq_line_id.pr_line_id.request_id').ids
+
         # 1. Prepare Header PO (Chuẩn Odoo)
         po_vals = {
             'partner_id': self.partner_id.id,
             'currency_id': self.currency_id.id,
             'date_order': fields.Datetime.now(),
-            'origin': ', '.join(self.line_ids.mapped('rfq_line_id.rfq_id.name')), # Source Document
+            'origin': ', '.join(self.line_ids.mapped('rfq_line_id.rfq_id.name')),
+            'epr_source_rfq_ids': [Command.set(rfq_ids)],  # Gán Link RFQ
+            'epr_source_pr_ids': [Command.set(pr_ids)],    # Gán Link PR
             'order_line': [],
         }
 
@@ -143,19 +146,16 @@ class EprCreatePoLineWizard(models.TransientModel):
     rfq_line_id = fields.Many2one(
         comodel_name='epr.rfq.line',
         string='RFQ Line',
-        required=True,
-        readonly=True
+        required=True
     )
 
     product_id = fields.Many2one(
         comodel_name='product.product',
-        string='Product',
-        readonly=True
+        string='Product'
     )
 
     description = fields.Text(
-        string='Description',
-        readonly=True
+        string='Description'
     )
 
     quantity = fields.Float(
@@ -165,13 +165,11 @@ class EprCreatePoLineWizard(models.TransientModel):
 
     uom_id = fields.Many2one(
         comodel_name='uom.uom',
-        string='UoM',
-        readonly=True
+        string='UoM'
     )
 
     price_unit = fields.Float(
-        string='Price',
-        readonly=True
+        string='Price'
     )
 
     taxes_id = fields.Many2many(

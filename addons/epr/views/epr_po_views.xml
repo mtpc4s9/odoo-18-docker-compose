@@ -18,6 +18,10 @@
                             invisible="epr_rfq_count == 0">
                         <field name="epr_rfq_count" widget="statinfo" string="EPR RFQs"/>
                     </button>
+
+                    <button name="action_view_epr_prs" type="object" class="oe_stat_button" icon="fa-shopping-cart" invisible="epr_pr_count == 0">
+                        <field name="epr_pr_count" widget="statinfo" string="Source PRs"/>
+                    </button>
                 </div>
 
                 <!-- 2. Tab Other Information: Hiển thị Link Many2many -->

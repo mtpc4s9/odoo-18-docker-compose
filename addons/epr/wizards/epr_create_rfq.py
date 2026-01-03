@@ -54,6 +54,7 @@ class EprCreateRfqWizard(models.TransientModel):
                     'final_product_id': pr_line.product_id.id,
                     'product_description': pr_line.name or pr_line.product_id.name,
                     'quantity': pr_line.quantity,
+                    'price_unit': pr_line.estimated_price,
                     'uom_id': (
                         pr_line.product_id.uom_po_id.id or
                         pr_line.product_id.uom_id.id
@@ -105,6 +106,7 @@ class EprCreateRfqWizard(models.TransientModel):
                     'product_id': wiz_line.final_product_id.id,
                     'description': wiz_line.product_description,
                     'quantity': wiz_line.quantity,
+                    'price_unit': wiz_line.price_unit,
                     'uom_id': wiz_line.uom_id.id,
                     # Link ngược lại dòng PR gốc để truy vết
                     'pr_line_id': wiz_line.pr_line_id.id
@@ -181,6 +183,11 @@ class EprCreateRfqLine(models.TransientModel):
     quantity = fields.Float(
         string='Qty',
         digits='Product Unit of Measure'
+    )
+
+    price_unit = fields.Float(
+        string='Price',
+        digits='Product Price'
     )
 
     uom_id = fields.Many2one(

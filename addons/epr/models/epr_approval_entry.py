@@ -115,15 +115,17 @@ class EprApprovalEntry(models.Model):
         # Trigger kiểm tra xem RFQ đã được duyệt hoàn toàn chưa
         self.rfq_id._check_approval_completion()
 
-    def action_refuse_line(self):
-        """User bấm nút Refuse"""
-        # return {
-        #     'type': 'ir.actions.act_window',
-        #     'name': _('Refuse Reason'),
-        #     'res_model': 'epr.approval.refuse.wizard',  # Viết sau
-        #     'target': 'new',
-        #     'context': {'default_entry_id': self.id}
-        # }
-        self.write({
-            'status': 'refused'
-        })
+    def action_reject_line(self):
+        """User bấm nút Refuse - Mở wizard để nhập lý do"""
+        self.ensure_one()
+        return {
+            'name': _('Reject RFQ'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'epr.reject.rfq.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'active_id': self.rfq_id.id,
+                'active_model': 'epr.rfq'
+            }
+        }

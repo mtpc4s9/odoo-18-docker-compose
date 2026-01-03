@@ -75,5 +75,14 @@
                 eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
         </record>
 
+        <!-- === QUAN TRỌNG: TỰ ĐỘNG GÁN QUYỀN REQUESTER CHO ALL USERS === -->
+        <!-- 
+             Logic: Can thiệp vào nhóm gốc 'base.group_user' (Internal User)
+             và bảo nó rằng: "Bất kỳ ai là Internal User thì mặc định cũng là ePR User".
+        -->
+        <record id="base.group_user" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('epr.group_epr_user'))]"/>
+        </record>
+
     </data>
 </odoo>
