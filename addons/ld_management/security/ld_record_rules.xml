@@ -17,7 +17,7 @@
         </record>
 
         <!-- RULE: Learners can manage their own Training Requests -->
-        <record id="rule_ld_request_learner_own" model="ir.rule">
+        <!-- <record id="rule_ld_request_learner_own" model="ir.rule">
             <field name="name">L&amp;D Request: User sees own requests</field>
             <field name="model_id" ref="model_ld_training_request"/>
             <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
@@ -26,13 +26,13 @@
             <field name="perm_write" eval="1"/>
             <field name="perm_create" eval="1"/>
             <field name="perm_unlink" eval="0"/>
-        </record>
-
-        <!-- ==========================================================
-             LINE MANAGER RULES (DYNAMIC ACCESS)
-             ========================================================== -->
-        <!-- RULE: Permission for Managers to see and approve team requests -->
-        <record id="rule_ld_request_manager_dynamic" model="ir.rule">
+        </record> -->
+ 
+         <!-- ==========================================================
+              LINE MANAGER RULES (DYNAMIC ACCESS)
+              ========================================================== -->
+         <!-- RULE: Permission for Managers to see and approve team requests -->
+        <!-- <record id="rule_ld_request_manager_dynamic" model="ir.rule">
             <field name="name">L&amp;D Request: Manager sees team requests</field>
             <field name="model_id" ref="model_ld_training_request"/>
             <field name="domain_force">['|', 
@@ -41,20 +41,20 @@
             ]</field>
             <field name="groups" eval="[(4, ref('ld_management.group_ld_user'))]"/>
             <field name="perm_read" eval="1"/>
-            <field name="perm_write" eval="1"/> <!-- Allow clicking Approval buttons -->
+            <field name="perm_write" eval="1"/> 
             <field name="perm_create" eval="0"/>
             <field name="perm_unlink" eval="0"/>
-        </record>
-
-        <!-- ==========================================================
-             OFFICER & MANAGER RULES (FULL ACCESS)
-             ========================================================== -->
-        <record id="rule_ld_request_officer_all" model="ir.rule">
+        </record> -->
+ 
+         <!-- ==========================================================
+              OFFICER & MANAGER RULES (FULL ACCESS)
+              ========================================================== -->
+        <!-- <record id="rule_ld_request_officer_all" model="ir.rule">
             <field name="name">L&amp;D Request: Staff sees all records</field>
             <field name="model_id" ref="model_ld_training_request"/>
             <field name="domain_force">[(1, '=', 1)]</field>
             <field name="groups" eval="[(4, ref('ld_management.group_ld_officer'))]"/>
-        </record>
+        </record> -->
 
     </data>
 </odoo>

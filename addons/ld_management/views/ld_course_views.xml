@@ -179,7 +179,7 @@
 
                             <!-- Tab 3: Requirements -->
                             <page string="Prerequisites" name="prereqs">
-                                <field name="prerequisite_ids" widget="many2many_tags"/>
+                                <field name="prerequisite_ids" string="Prerequisite Courses" widget="many2many_tags"/>
                                 <group string="SEO Info">
                                     <field name="description_short"/>
                                 </group>

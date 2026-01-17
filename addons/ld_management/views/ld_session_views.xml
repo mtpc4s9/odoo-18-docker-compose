@@ -185,7 +185,8 @@
                                 <field string="Attendees" name="enrollment_count" widget="statinfo"/>
                             </button>
                             <!-- Waitlist Warning -->
-                            <button class="oe_stat_button" type="action" icon="fa-clock-o" 
+                            <button class="oe_stat_button" type="object" icon="fa-clock-o" 
+                                    name="action_view_enrollments"
                                     invisible="waitlist_count == 0">
                                 <div class="o_field_widget o_stat_info text-danger">
                                     <span class="o_stat_value"><field name="waitlist_count"/></span>

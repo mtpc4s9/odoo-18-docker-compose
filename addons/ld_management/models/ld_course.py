@@ -87,7 +87,7 @@ class LdCourse(models.Model):
         relation='ld_course_prereq_rel',
         column1='course_id',
         column2='prereq_id',
-        string='Prerequisites',
+        string='Prerequisite Courses',
         domain="[('id', '!=', id)]",  # Prevent selecting itself in UI
         help="Courses that must be completed before taking this course."
     )
@@ -160,10 +160,9 @@ class LdCourse(models.Model):
     # HELPER METHODS
     # ==================================================================================
     @api.model
-    def _read_group_category_ids(self, categories, domain, order):
+    def _read_group_category_ids(self, categories, domain, order=None):
         """ Display all categories in Kanban view even if empty """
-        category_ids = categories._search([], order=order, access_rights_uid=SUPERUSER_ID)
-        return categories.browse(category_ids)
+        return categories.sudo().search([], order=order)
 
     # ==================================================================================
     # WORKFLOW ACTIONS

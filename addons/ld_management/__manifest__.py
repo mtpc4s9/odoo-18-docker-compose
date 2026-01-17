@@ -40,15 +40,14 @@
         'security/ld_record_rules.xml',
         'data/ld_training_request_sequence_data.xml',
         'data/ld_session_sequence_data.xml',
-        'views/ld_course_category_views.xml',
         'views/ld_course_views.xml',
+        'views/ld_course_category_views.xml',
         'views/ld_room_views.xml',
         'views/ld_session_views.xml',
         'views/ld_enrollment_views.xml',
         'views/ld_training_request_views.xml',
         'views/ld_menus.xml',
-        'wizards/ld_training_request_reject_wizard_views.xml',
-        
+        # 'wizards/ld_training_request_reject_wizard_views.xml',
 
         # Data
         # 'data/ld_sequence_data.xml',

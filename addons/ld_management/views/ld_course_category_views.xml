@@ -26,8 +26,9 @@
         <record id="view_ld_course_category_list" model="ir.ui.view">
             <field name="name">ld.course.category.list</field>
             <field name="model">ld.course.category</field>
+            <field name="priority">10</field>
             <field name="arch" type="xml">
-                <list string="Course Categories" priority="10">
+                <list string="Course Categories">
                     <field name="sequence" widget="handle"/>
                     <field name="complete_name" string="Category Name"/>
                     <field name="course_count" optional="show"/>

@@ -6,7 +6,7 @@
             <!-- Description: Top-level icon in the Odoo App Switcher -->
             <!-- ==================================================== -->
             <menuitem id="menu_ld_root"
-                      name="L&D"
+                      name="L&amp;D Management"
                       web_icon="ld_management,static/description/icon.png"
                       sequence="10"/>
 
@@ -102,7 +102,7 @@
                       sequence="30"/>
             
             <menuitem id="menu_ld_enrollments"
-                      name="Enrollments & Results"
+                      name="Enrollments &amp; Results"
                       parent="menu_ld_operation"
                       action="action_ld_enrollment"
                       sequence="40"/>
@@ -112,17 +112,11 @@
             <!-- Audience: L&D Officers & Managers                    -->
             <!-- Purpose: Strategic analysis (Cost, Coverage).        -->
             <!-- ==================================================== -->
-            <menuitem id="menu_ld_reporting"
+            <!-- <menuitem id="menu_ld_reporting"
                       name="Reporting"
                       parent="menu_ld_root"
                       groups="ld_management.group_ld_officer"
-                      sequence="40"/>
-
-            <!-- <menuitem id="menu_ld_report_cost"
-                      name="Cost Analysis"
-                      parent="menu_ld_reporting"
-                      action="action_ld_report_cost_analysis"
-                      sequence="10"/> -->
+                      sequence="40"/> -->
             
             <!-- <menuitem id="menu_ld_report_org"
                       name="Org Chart Status"

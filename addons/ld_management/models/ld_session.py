@@ -274,5 +274,5 @@ class LdSession(models.Model):
     # HELPER
     # ==================================================================================
     @api.model
-    def _expand_states(self, states, domain, order):
+    def _expand_states(self, states, domain, order=None):
         return [key for key, val in type(self).state.selection]

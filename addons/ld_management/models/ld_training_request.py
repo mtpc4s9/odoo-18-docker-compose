@@ -388,7 +388,7 @@ class LdTrainingRequest(models.Model):
     # HELPER METHODS
     # ==================================================================================
     @api.model
-    def _expand_states(self, states, domain, order):
+    def _expand_states(self, states, domain, order=None):
         """
         Enable Kanban View to show all columns (states) even if they are empty.
         Linked via: state = fields.Selection(..., group_expand='_expand_states')

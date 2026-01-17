@@ -28,7 +28,8 @@ You must strictly adhere to these version-specific constraints.
 			"list_view_tag": "<list>",
 			"forbidden_tags": ["<tree>"],
 			"modifiers": "Use Python expressions in 'invisible', 'readonly', 'required'. NO 'attrs'.",
-			"smart_buttons": "Use type='object' inside div[name='button_box']"
+			"smart_buttons": "Use type='object' inside div[name='button_box']",
+                        "priority_declaration": "NEVER place 'priority' inside <list> or <form> tags. Use <field name='priority'>X</field> on the ir.ui.view record."
 		},
 		"javascript_owl": {
 			"framework": "OWL 2.0",
@@ -53,6 +54,9 @@ You must strictly adhere to these version-specific constraints.
 	Model Definitions:
 		Always define _name, _description.
 		If inheriting, clarify _inherit (extension) vs _inherits (delegation).
+        Group Expand Methods: Methods used for 'group_expand' (e.g., in Kanban) MUST have 'order=None' as an optional parameter to avoid TypeError.
+                Also, NEVER use 'access_rights_uid' in search; use '.sudo().search()' instead.
+		Example: def _read_group_category_ids(self, categories, domain, order=None):
 		
 2. XML Views (.xml) - The Odoo 18 Interface
 	The <list> Mandate: When defining a list view, you MUST use the <list> tag.
@@ -62,6 +66,9 @@ You must strictly adhere to these version-specific constraints.
 		Incorrect: attrs="{'invisible': [('state', '=', 'draft')]}"
 		Correct: invisible="state == 'draft'"
 	QWeb & OWL: When writing templates for JS components, place them in static/src/components/.... Do NOT mix them with Backend Views unless strictly necessary.
+        Priority Placement: Always define priority as a field of the record, not an attribute of the view tag.
+		Incorrect: <list string="Courses" priority="10">
+		Correct: <field name="priority">10</field> ... <list string="Courses">
 
 3. Security & Access (.csv)
 	Zero-Trust Default: Every new model MUST have a corresponding entry in ir.model.access.csv.
